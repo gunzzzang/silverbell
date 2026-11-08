@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+}
+
+group = 'silverbell'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// JDK 17 이상이면 어떤 버전으로 빌드해도 Java 17 문법까지만 허용한다.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// ./gradlew runServer, ./gradlew runClient
+tasks.register('runServer', JavaExec) {
+    group = 'application'
+    description = '퀴즈 서버를 실행한다'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'silverbell.server.ServerMain'
+    standardInput = System.in
+}
+
+tasks.register('runClient', JavaExec) {
+    group = 'application'
+    description = '퀴즈 클라이언트를 실행한다'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'silverbell.client.ClientMain'
+}
