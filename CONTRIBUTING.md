@@ -141,6 +141,9 @@ void buzzTwice() {
 - 화면이 바뀌면 **실행 화면 캡처**, 통신이 바뀌면 **서버 로그**를 붙여요.
 - 아직 작업 중이면 **Draft PR**로 올려요.
 - 둘 다 쓰는 파일(`MessageType`, `GameConfig`, `GameRoom`, `MessageDispatcher` 등록부)을 바꿀 때는 **그 변경만 담은 작은 PR**로 먼저 머지해요.
+- `GameRoom`은 라인 A가 맡아요. 라인 B가 고쳐야 하면 그 변경만 작은 PR로 올리고 라인 A가 리뷰해요.
+- 메시지 형식(값 순서·구분)은 **그 메시지를 보내는 이슈의 담당**이 정하고, `MessageType` 주석과 PRD 9절을 같이 고쳐요.
+- 상대가 기다리는 기능은 메서드 이름·인자만 먼저 정해 빈 구현으로 작은 PR을 올려요. 내용은 그다음에 채워요.
 - AI를 썼다면 `ai_logs/<GitHub아이디>/YYYY-MM-DD-issue-N.md`에 기록하고 PR 본문에 링크해요. 양식은 [`ai_logs/TEMPLATE.md`](ai_logs/TEMPLATE.md).
 
 ## 리뷰
