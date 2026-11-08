@@ -13,6 +13,7 @@ public interface MessageHandler {
 
     /**
      * @param sender  보낸 사람 닉네임. 서버가 접속 때 확인한 값이라 믿을 수 있다(클라이언트가 보낸 값이 아니다).
+     *                입장(JOIN) 전 연결의 메시지는 핸들러까지 오지 않는다(#4·#5).
      * @param message 받은 메시지
      */
     void handle(String sender, Message message);
