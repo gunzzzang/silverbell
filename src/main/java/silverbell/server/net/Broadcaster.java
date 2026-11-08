@@ -8,6 +8,9 @@ import silverbell.common.Message;
  * <p>게임 규칙({@code server.game})은 소켓을 직접 모르고 이 인터페이스에만 의존한다(DIP).
  * 실제 서버에서는 {@code net} 패키지가 소켓으로 보내도록 구현하고,
  * JUnit 테스트에서는 보낸 메시지를 리스트에 모아두는 가짜 구현을 넣어 소켓 없이 확인한다.
+ *
+ * <p>게임 로직에 필요한 보내기 두 가지만 둔다(ISP). 접속 관리·소켓 읽기는 여기에 넣지 않는다.
+ * 실제 구현과 가짜 구현은 서로 바꿔 끼워도 게임 로직이 똑같이 동작해야 한다(LSP).
  */
 public interface Broadcaster {
 

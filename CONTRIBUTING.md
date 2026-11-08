@@ -40,10 +40,12 @@ java -version
 
 ## 코드 규칙
 
-설계 원칙의 이유는 [docs/github-plan.md 2.9절](docs/github-plan.md)에 있어요. 요약하면:
+설계는 SOLID(SRP·OCP·LSP·ISP·DIP)를 따라요. 원칙별 적용과 이유는 [docs/github-plan.md 2.9절](docs/github-plan.md)에 있어요. 요약하면:
 
 - **패키지 역할을 지켜요.** 소켓 코드는 `net`에만, 게임 규칙은 `game`에만, 화면은 `ui`에만 둬요. `game`은 소켓을 몰라요.
 - **새 메시지 처리는 핸들러로 추가해요.** 큰 `switch`를 늘리지 않고, `MessageHandler`를 구현한 클래스를 만들어 `MessageDispatcher`에 등록해요.
+- **같은 인터페이스의 구현은 같은 약속을 지켜요(LSP).** 예를 들어 채점기는 어떤 입력이 와도 예외 없이 `true`/`false`만 돌려줘요. 다른 구현으로 바꿔 끼워도 쓰는 쪽 코드가 그대로여야 해요.
+- **인터페이스는 작게 둬요(ISP).** 쓰는 쪽이 필요 없는 메서드까지 알게 만들지 않아요. 기능이 늘면 기존 인터페이스를 키우지 말고 새로 나눠요.
 - **숫자는 `GameConfig`에 모아요.** 시간·인원·점수를 코드 중간에 직접 쓰지 않아요.
 - **공유 상태는 그 클래스 안에서 동기화해요.** `GameRoom`, `BellQueue`의 필드를 밖에서 직접 건드리지 않고 메서드로만 써요.
 - **이름은 PRD 용어를 따라요.** 벨 대기열 → `BellQueue`, 초성 힌트 → `HintMaker`.

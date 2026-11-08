@@ -3,7 +3,8 @@ package silverbell.client.net;
 import silverbell.common.Message;
 
 /**
- * 서버에서 메시지를 받았을 때 알림을 받는 쪽(화면)이 구현한다(Observer).
+ * 서버에서 메시지를 받았을 때 알림을 받는 쪽(화면)이 구현한다.
+ * Observer 패턴으로, 화면이 통신 구현이 아닌 이 작은 인터페이스에만 의존하게 한다(DIP·ISP).
  *
  * <p>{@link ServerConnection}은 화면을 모르고 이 인터페이스로 알리기만 한다.
  * 그래서 나중에 화면을 통째로 바꿔도(UI 꾸미기) 통신 코드는 고치지 않는다.
