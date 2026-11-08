@@ -160,10 +160,10 @@ void buzzTwice() {
 
 ## 머지 조건
 
-`main`에는 보호 규칙(ruleset "main 보호")이 걸려 있어서, 아래 중 앞의 네 개는 GitHub이 직접 막아요.
+`main`에 보호 규칙은 걸지 않았어요. 2명이라 아래 조건은 **서로 지키는 약속**이에요.
 
-- [ ] 상대방 승인(Approve) 1명 — 자기 PR은 자기가 승인할 수 없어요
-- [ ] CI(`Compile and test`) 통과
+- [ ] 상대방 승인(Approve) 1명
+- [ ] CI(`Compile and test`) 통과 — PR 화면 아래에 초록 체크가 떠야 해요
 - [ ] 리뷰 댓글을 모두 해결(Resolve conversation)
 - [ ] 최신 `main` 반영 — 다른 PR이 먼저 머지됐으면 PR 화면의 **Update branch**를 누르고 CI를 다시 통과
 - [ ] 서버 1 + 클라이언트 여러 개로 직접 실행해서 확인 (통신·화면이 바뀐 경우)
@@ -191,7 +191,7 @@ void buzzTwice() {
 
 ## 하지 말아야 할 것
 
-- `main`에 직접 push (규칙으로 막혀 있어요)
+- 코드를 `main`에 직접 push (오타·문서 수정 정도만 예외)
 - `git push --force` (내 브랜치에서 꼭 필요할 때만 `--force-with-lease`)
 - `build/`, `out/`, `.idea/`, 제출용 `*.zip` 커밋
 - 문제 파일에 실명·연락처 같은 실제 개인정보 넣기
