@@ -4,23 +4,44 @@ body:
   - type: markdown
     attributes:
       value: |
-        제목은 `[M2] 주간 통합 테스트`처럼 마일스톤 번호를 앞에 붙여 주세요.
+        제목은 `[M2] M2 통합 테스트: 한 문제 끝까지`처럼 마일스톤 번호를 앞에 붙여 주세요.
         라벨은 `type: test` · `type: docs` · `type: setup` 중에서 고르고, 팀 결정이 필요하면 `status: discussion`을 붙여요.
+        담당자는 **Assignees**, 마일스톤은 **Milestone**으로 지정해요.
 
   - type: textarea
     id: goal
     attributes:
       label: 목표
-      description: 무엇을, 왜 하는지 적어 주세요.
+      description: 무엇을, 왜 하는지 한두 문장으로 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: meta
+    attributes:
+      label: 정보
+      value: |
+        - 담당: (라인 A / 라인 B / 함께 (진행·기록: 라인 ○))
+        - 작업 기간: 2026/MM/DD~MM/DD · 팀 내부 계획
+        - 선행 이슈:
+        - 관련 요구사항: (PRD 시나리오·기능 ID·N 번호, 예: PRD 5.1 시작할 때 · N3 서버 안정성)
     validations:
       required: true
 
   - type: textarea
     id: todo
     attributes:
-      label: 할 일
+      label: 작업·완료 기준
       value: |
+        아래를 모두 하고 결과를 이 이슈 댓글로 남기면 닫는다.
+
         - [ ]
         - [ ]
     validations:
       required: true
+
+  - type: textarea
+    id: verify
+    attributes:
+      label: 검증
+      description: 무엇으로 확인하고, 누가 어디에 결과를 남길지
