@@ -1,0 +1,45 @@
+name: 🐛 버그
+description: 의도와 다르게 동작하는 문제를 알릴 때 사용해요
+labels: ['type: bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        제목은 `[13주차] 벨을 연타하면 줄에 두 번 들어가는 문제`처럼 주차를 앞에 붙여 주세요.
+        통합 테스트에서 찾은 문제는 그 자리에서 고치지 말고 이 양식으로 남겨요.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제
+      description: 어떻게 됐고, 어떻게 돼야 하는지 적어 주세요. 관련 기능 ID도 함께.
+      placeholder: 스페이스바를 빠르게 두 번 누르면 벨 순서에 같은 사람이 두 번 보여요. 한 번만 들어가야 해요. (D2 벨 대기열)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: 환경
+      description: 실행 방식 · 클라이언트 수 · 실행한 커밋
+      placeholder: 한 PC · 서버 1 + 클라이언트 3 · a1b2c3d
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: 서버 로그 · 화면 캡처
+      description: 서버 콘솔의 메시지 로그나 예외, 화면 캡처 (선택)
+      render: text

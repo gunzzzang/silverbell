@@ -1,0 +1,26 @@
+name: 🛠 작업
+description: 통합 테스트·문서·설정·결정 등 기능·버그 외의 작업에 사용해요
+body:
+  - type: markdown
+    attributes:
+      value: |
+        제목은 `[12주차] 주차 통합 테스트`처럼 주차를 앞에 붙여 주세요.
+        라벨은 `type: test` · `type: docs` · `type: setup` 중에서 고르고, 팀 결정이 필요하면 `status: discussion`을 붙여요.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목표
+      description: 무엇을, 왜 하는지 적어 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: todo
+    attributes:
+      label: 할 일
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
