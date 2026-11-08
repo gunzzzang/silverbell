@@ -10,12 +10,12 @@ import java.util.List;
  * "서브넷마스크" → 정답, " 서브넷  마스크 " → 정답, "서브넷" → 오답
  * </pre>
  *
- * <p>할 일 (13주차 · 벨·답 라인).
+ * <p>할 일 (M2 · 12주차 · 라인 B).
  */
 public class ShortAnswerChecker implements AnswerChecker {
 
     @Override
     public boolean isCorrect(List<String> answers, String input) {
-        throw new UnsupportedOperationException("13주차 벨·답 라인에서 구현");
+        throw new UnsupportedOperationException("M2(12주차) 라인 B에서 구현");
     }
 }
