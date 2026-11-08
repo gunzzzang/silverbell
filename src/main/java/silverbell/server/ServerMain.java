@@ -16,6 +16,6 @@ public final class ServerMain {
     }
 
     public static void main(String[] args) {
-        System.out.println("[서버] 아직 구현 전이에요. M1(11주차)에서 수업 예제를 옮겨 와요.");
+        System.out.println("[서버] 아직 구현 전이에요. #4에서 수업 예제를 옮겨 와요.");
     }
 }

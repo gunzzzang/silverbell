@@ -9,7 +9,7 @@ import javax.swing.JPanel;
  * 게임 창 하나. {@link CardLayout}으로 타이틀·대기실·게임·결과 화면을 겹쳐 두고 하나만 보여준다.
  * 화면마다 창을 새로 띄우지 않아서 위치·크기가 유지되고 전환이 자연스럽다.
  *
- * <p>할 일: 각 화면 패널을 UI 명세서대로 채운다 (M1 틀 → M4 꾸미기).
+ * <p>할 일: 각 화면 패널을 UI 명세서대로 채운다 (#6 타이틀·대기실, #7 게임 화면 틀, #20 결과 화면 → #26·#27 꾸미기).
  */
 public final class MainFrame extends JFrame {
 
