@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📖 기여 가이드
-    url: https://github.com/OWNER/silverbell/blob/main/CONTRIBUTING.md
+    url: https://github.com/gunzzzang/silverbell/blob/main/CONTRIBUTING.md
     about: 브랜치 · 커밋 · PR · 리뷰 · 코드 규칙을 확인해요
   - name: 📋 PRD (요구사항 명세서)
     url: https://app.notion.com/p/408e56ed38a581c08a39e18c3dee1cc5
