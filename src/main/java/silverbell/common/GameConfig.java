@@ -11,7 +11,8 @@ public final class GameConfig {
     }
 
     // ── 접속 (PRD Q2) ───────────────────────────
-    public static final int DEFAULT_PORT = 5000;
+    /** 5000은 macOS AirPlay 수신이 쓰고 있어서 피한다 */
+    public static final int DEFAULT_PORT = 5050;
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 4;
 
