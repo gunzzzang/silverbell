@@ -221,7 +221,7 @@ Closes #
 
 ### 2.9 설계 원칙 · 코드 품질
 
-목표: 재사용성 높고 소프트웨어공학 원칙 SOLID(SRP·OCP·LSP·ISP·DIP)에 맞는 구조. 단, **모든 구조는 "왜 이렇게 했는지" 보고서·발표에서 설명할 수 있어야 한다.** 이유를 댈 수 없는 패턴은 넣지 않는다.
+설계는 소프트웨어공학 **SOLID 원칙(SRP·OCP·LSP·ISP·DIP)을 준수한다.** 어떻게 지켰는지는 각자 PR과 주간 보고서에 설명한다.
 
 **패키지 구조**
 
@@ -239,25 +239,6 @@ client/
   ui/            화면 (TitleScreen, LobbyScreen, GameScreen, ResultScreen)
 ```
 
-**SOLID 원칙별 적용**
-
-| 원칙 | 실버벨에서 | 설명할 이유 |
-| --- | --- | --- |
-| SRP 단일 책임 | 소켓 입출력(`net`) / 게임 규칙(`game`) / 화면(`ui`)을 나누고, 핸들러는 메시지 한 종류만, `BellQueue`는 줄 세우기만, `ScoreBoard`는 점수만 맡는다 | 한 가지 이유로만 바뀐다. 네트워크를 몰라도 규칙을 고치고 테스트할 수 있다 |
-| OCP 개방-폐쇄 | 메시지 처리는 `MessageDispatcher`에 핸들러를 등록하는 방식, 채점은 `AnswerChecker` 구현을 추가하는 방식 | H9 힌트 투표, 새 문제 유형을 넣을 때 기존 코드를 고치지 않고 클래스만 추가한다 |
-| LSP 리스코프 치환 | `AnswerChecker` 구현(4지선다·단답형), `Broadcaster` 구현(실제 소켓·테스트용 가짜), `MessageListener` 구현(각 화면)은 서로 바꿔 끼워도 쓰는 쪽이 똑같이 동작해야 한다 | 예: 어떤 채점기든 이상한 입력에 예외를 던지지 않고 `false`를 돌려준다는 같은 약속을 지킨다. 그래야 채점하는 쪽이 유형을 따지지 않는다 |
-| ISP 인터페이스 분리 | 인터페이스를 쓰는 쪽이 필요한 만큼만 작게 둔다. `Broadcaster`는 보내기 2개만, `MessageListener`는 받기·끊김 2개만, `MessageHandler`는 메서드 1개 | 게임 로직은 소켓 읽기·접속 관리 같은 걸 몰라도 되고, 화면은 연결을 끊거나 다시 붙는 메서드를 몰라도 된다 |
-| DIP 의존 역전 | 고수준인 게임 규칙은 `Broadcaster` 추상화에만, 화면은 `MessageListener`에만 의존하고, 실제 소켓 구현이 그 인터페이스를 구현한다 | JUnit에서 가짜 `Broadcaster`로 소켓 없이 테스트할 수 있고, 통신 방식을 바꿔도 게임 규칙은 그대로다 |
-
-**원칙을 지키려고 쓰는 디자인 패턴** (원칙이 아니라 수단이다)
-
-| 패턴 | 어디에 | 지키는 원칙 |
-| --- | --- | --- |
-| Strategy | `AnswerChecker` — 유형별 채점 방법 | OCP, LSP |
-| Observer | `ServerConnection` → `MessageListener`(화면)에 알림 | SRP, DIP |
-| Command 비슷한 등록 방식 | `MessageDispatcher`에 종류별 `MessageHandler` | OCP, SRP |
-| Decorator (선택) | 메시지 로그를 `Broadcaster`를 감싸는 클래스로 추가 (`LoggingBroadcaster`) | OCP, SRP — 수업 슬라이드의 `LoggingCalculatorDecorator`와 같은 구조 |
-
 **코드 규칙**
 - 매직 넘버 금지: 시간(20초·10초·힌트 시점), 최대 인원, 점수는 `GameConfig` 상수 한 곳에
 - 공유 상태(`GameRoom`, `BellQueue`)는 메서드로만 접근, 동기화는 그 클래스 안에서만
@@ -265,7 +246,7 @@ client/
 - 공개 메서드에 Javadoc 한두 줄 (무엇을, 어떤 조건에서)
 - 로직 클래스는 JUnit 테스트 필수, 테스트 이름은 "~하면 ~된다"
 
-**과설계 주의**: 2명·몇 주짜리 과제다. 위 패턴 외에 더 넣지 않는다. 쓸 때는 어떤 SOLID 원칙을 위한 건지 PR에 적는다. 뼈대 단계에서 구조를 같이 정하고, 이후엔 이 틀 안에서만 작업한다.
+**과설계 주의**: 2명·몇 주짜리 과제다. 이유를 설명할 수 없는 구조는 넣지 않는다. 뼈대 단계에서 구조를 같이 정하고, 이후엔 이 틀 안에서만 작업한다.
 
 ---
 

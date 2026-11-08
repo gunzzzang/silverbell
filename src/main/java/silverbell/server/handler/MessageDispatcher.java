@@ -11,7 +11,7 @@ import silverbell.common.MessageType;
  * 받은 메시지를 종류에 맞는 {@link MessageHandler}에게 넘긴다.
  *
  * <p>큰 {@code switch} 대신 종류별 핸들러를 등록해 두는 방식이다. 기능을 추가할 때
- * 이 클래스와 다른 핸들러를 고치지 않고 핸들러 클래스 하나와 등록 한 줄만 추가한다(OCP).
+ * 이 클래스와 다른 핸들러를 고치지 않고 핸들러 클래스 하나와 등록 한 줄만 추가한다.
  *
  * <pre>
  * MessageDispatcher dispatcher = new MessageDispatcher();

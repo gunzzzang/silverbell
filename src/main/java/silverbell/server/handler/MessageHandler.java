@@ -6,7 +6,7 @@ import silverbell.common.Message;
  * 메시지 한 종류를 처리하는 클래스가 구현한다. 예: {@code BuzzHandler}는 {@code BUZZ}만 처리한다.
  *
  * <p>새 메시지를 처리하려면 이 인터페이스를 구현한 클래스를 만들어
- * {@link MessageDispatcher}에 등록한다. 기존 핸들러는 고치지 않는다(OCP).
+ * {@link MessageDispatcher}에 등록한다. 기존 핸들러는 고치지 않는다.
  */
 @FunctionalInterface
 public interface MessageHandler {
