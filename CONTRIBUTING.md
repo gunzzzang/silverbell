@@ -22,9 +22,12 @@ java -version
 
 ### 3. 서버 1 + 클라이언트 여러 개 실행
 
-1. `ServerMain`의 초록 실행 버튼으로 서버를 먼저 켜요.
-2. `ClientMain`을 한 번 실행한 뒤, 실행 설정(Run → Edit Configurations → ClientMain)에서 Modify options → **Allow multiple instances**를 켜요.
-3. 이제 `ClientMain`을 누를 때마다 창이 하나씩 더 떠요. 통합 테스트는 서버 1 + 클라이언트 3개로 해요.
+저장소의 `.run/` 폴더에 실행 설정이 들어 있어서, 열면 오른쪽 위 실행 목록에 `ServerMain`·`ClientMain`이 바로 보여요. `ClientMain`은 **여러 개 동시에 실행**되게 설정돼 있어요.
+
+1. `ServerMain`을 먼저 실행해요.
+2. `ClientMain`을 누를 때마다 창이 하나씩 더 떠요. 통합 테스트는 서버 1 + 클라이언트 3개로 해요.
+
+> 실행 목록에 안 보이면 `ClientMain`을 한 번 실행한 뒤 Run → Edit Configurations → ClientMain → Modify options → **Allow multiple instances**를 켜요.
 
 ### IntelliJ에서 자주 쓰는 것
 
@@ -73,7 +76,7 @@ void buzzTwice() {
 ```
 
 1. **담당 이슈 확인**: 작업은 모두 이슈로 할당되어 있어요. 내 이슈가 아닌 작업을 하게 되면 담당자와 먼저 이야기해요.
-2. **브랜치 만들기**: 항상 최신 `main`에서 만들어요. IntelliJ 오른쪽 아래 브랜치 이름 → `main` → Update, 그다음 New Branch로 `feat/#7-bell-queue`를 만들어요.
+2. **브랜치 만들기**: 항상 최신 `main`에서 만들어요. IntelliJ 오른쪽 아래 브랜치 이름 → `main` → Update, 그다음 New Branch로 `feat/#9-bell-queue`를 만들어요.
 3. **커밋하고 push**: 커밋 컨벤션을 따라 커밋한 뒤 원격에 브랜치를 올려요.
 4. **PR 올리기**: GitHub 웹(또는 IntelliJ의 Pull Requests 창)에서 PR을 만들고 상대에게 리뷰를 요청해요.
 
@@ -82,9 +85,9 @@ void buzzTwice() {
    ```bash
    git switch main
    git pull origin main
-   git switch -c feat/#7-bell-queue
+   git switch -c feat/#9-bell-queue
    git commit -m "feat: 벨 대기열 중복 방지 추가"
-   git push -u origin feat/#7-bell-queue
+   git push -u origin feat/#9-bell-queue
    ```
    </details>
 
@@ -94,10 +97,10 @@ void buzzTwice() {
 
 | 대상 | 형식 | 예시 |
 | --- | --- | --- |
-| 이슈 제목 | `[마일스톤] 할 일 (기능 ID)` | `[M2] 벨 대기열과 순서 표시 (D1~D3)` |
-| 브랜치 | `타입/#이슈번호-설명` | `feat/#7-bell-queue` |
+| 이슈 제목 | `[마일스톤] 할 일` | `[M1] 벨 대기열 BellQueue와 동시 누르기 테스트` |
+| 브랜치 | `타입/#이슈번호-설명` | `feat/#9-bell-queue` |
 | 커밋 | `타입: 제목` | `feat: 벨 대기열 중복 방지 추가` |
-| PR 제목 | `타입: #이슈번호 제목` | `feat: #7 벨 대기열과 순서 표시 구현` |
+| PR 제목 | `타입: #이슈번호 제목` | `feat: #9 벨 대기열과 동시 누르기 테스트 구현` |
 
 ### 타입
 
@@ -131,6 +134,7 @@ void buzzTwice() {
 - 제목은 "~ 추가", "~ 수정"처럼 **명사형**으로 끝내요.
 - 본문은 필요할 때만, **무엇을 했는지보다 왜 했는지**를 적어요.
 - 커밋 하나에는 **하나의 의도**만 담아요. 머지할 때 하나로 합쳐지니 자주 커밋해도 괜찮아요.
+- 머지하면 **PR 제목이 main의 커밋 메시지**가 돼요. 그래서 PR 제목 형식이 중요해요.
 
 ## PR
 
@@ -156,10 +160,15 @@ void buzzTwice() {
 
 ## 머지 조건
 
-- [ ] 상대방 승인(Approve)
-- [ ] CI(`./gradlew build`) 통과
+`main`에는 보호 규칙(ruleset "main 보호")이 걸려 있어서, 아래 중 앞의 네 개는 GitHub이 직접 막아요.
+
+- [ ] 상대방 승인(Approve) 1명 — 자기 PR은 자기가 승인할 수 없어요
+- [ ] CI(`Compile and test`) 통과
+- [ ] 리뷰 댓글을 모두 해결(Resolve conversation)
+- [ ] 최신 `main` 반영 — 다른 PR이 먼저 머지됐으면 PR 화면의 **Update branch**를 누르고 CI를 다시 통과
 - [ ] 서버 1 + 클라이언트 여러 개로 직접 실행해서 확인 (통신·화면이 바뀐 경우)
-- [ ] `main`과 충돌 없음
+
+머지 방식은 Squash만 열려 있고, 머지하면 브랜치는 자동으로 지워져요.
 
 ## 주간 보고서와 제출
 
@@ -182,7 +191,7 @@ void buzzTwice() {
 
 ## 하지 말아야 할 것
 
-- `main`에 직접 push
+- `main`에 직접 push (규칙으로 막혀 있어요)
 - `git push --force` (내 브랜치에서 꼭 필요할 때만 `--force-with-lease`)
 - `build/`, `out/`, `.idea/`, 제출용 `*.zip` 커밋
 - 문제 파일에 실명·연락처 같은 실제 개인정보 넣기

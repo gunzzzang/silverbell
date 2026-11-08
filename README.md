@@ -54,7 +54,7 @@ CHAT|이건;안녕 ㅋㅋ|;ㅋ        → 닉네임 "이건", 메시지 "안녕 
 
 JDK 17 이상이 필요합니다.
 
-**IntelliJ**: `ServerMain`을 먼저 실행하고, `ClientMain`을 여러 번 실행합니다. 클라이언트 실행 설정에서 Modify options → **Allow multiple instances**를 켜야 창이 여러 개 뜹니다.
+**IntelliJ**: 실행 목록에서 `ServerMain`을 먼저 실행하고, `ClientMain`을 여러 번 실행합니다. 실행 설정은 `.run/`에 들어 있고, `ClientMain`은 여러 창을 동시에 띄우도록 설정돼 있습니다.
 
 **터미널** (저장소 루트에서):
 
