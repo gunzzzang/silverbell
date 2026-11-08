@@ -6,7 +6,7 @@
 
 - 기획: [PRD (요구사항 명세서)](https://app.notion.com/p/408e56ed38a581c08a39e18c3dee1cc5) · [UI 명세서](https://app.notion.com/p/408e56ed38a581c6bf13df9cf63cf41b)
 - 작업 규칙: [CONTRIBUTING.md](CONTRIBUTING.md)
-- GitHub 운영 계획: [docs/github-plan.md](docs/github-plan.md)
+- 일정·할 일: [마일스톤](https://github.com/gunzzzang/silverbell/milestones) · [이슈](https://github.com/gunzzzang/silverbell/issues)
 
 ## 구조
 
@@ -27,7 +27,7 @@ src/test/java/     JUnit 테스트 (main과 같은 패키지 구조)
 questions/         문제 파일
 ```
 
-나눈 이유와 설계 원칙은 [docs/github-plan.md 2.9절](docs/github-plan.md#29-설계-원칙--코드-품질)에 있습니다.
+설계 원칙과 코드 규칙은 [CONTRIBUTING.md 「코드 규칙」](CONTRIBUTING.md#코드-규칙)에 있습니다.
 
 ## 통신 프로토콜
 
