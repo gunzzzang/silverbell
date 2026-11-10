@@ -39,3 +39,12 @@ tasks.register('runClient', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'silverbell.client.ClientMain'
 }
+
+// 테스트용: 친 줄을 그대로 보내고 받은 줄을 찍는다. ./gradlew -q --console=plain runConsole
+tasks.register('runConsole', JavaExec) {
+    group = 'application'
+    description = '테스트용 콘솔 클라이언트를 실행한다'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'silverbell.client.ConsoleClient'
+    standardInput = System.in
+}
