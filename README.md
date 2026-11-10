@@ -54,7 +54,7 @@ CHAT|이건;안녕 ㅋㅋ|;ㅋ        → 닉네임 "이건", 메시지 "안녕 
 
 JDK 17 이상이 필요합니다.
 
-**IntelliJ**: 실행 목록에서 `ServerMain`을 먼저 실행하고, `ClientMain`을 여러 번 실행합니다. 실행 설정은 `.run/`에 들어 있고, `ClientMain`·`ConsoleClient`는 여러 개를 동시에 띄우도록 설정돼 있습니다.
+**IntelliJ**: 처음 한 번 설정(Ctrl+Alt+S) → 빌드, 실행, 배포 → 빌드 도구 → Gradle에서 「빌드 및 실행」과 「테스트 실행」을 `IntelliJ IDEA`로 바꿉니다(Gradle로 실행하면 실행 창의 한글이 깨지고 콘솔 입력이 불편합니다). 실행 목록에서 `ServerMain`을 먼저 실행하고, `ClientMain`을 여러 번 실행합니다. 실행 설정은 `.run/`에 들어 있고, `ClientMain`·`ConsoleClient`는 여러 개를 동시에 띄우도록 설정돼 있습니다.
 
 **테스트용 콘솔 클라이언트** (`ConsoleClient`): 친 줄을 그대로 서버에 보내고 받은 줄을 찍습니다. 화면 없이 접속을 확인하거나, 가짜 `SCORE`·빈 줄 같은 엉뚱한 메시지를 보내 서버가 무시하는지 볼 때 씁니다.
 
