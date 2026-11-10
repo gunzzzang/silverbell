@@ -17,7 +17,8 @@ public interface Broadcaster {
 
     /**
      * 입장한 한 사람에게만 보낸다(귓속말, 방장 전용 알림 등). 없는 닉네임이면 아무것도 하지 않는다.
-     * 아직 닉네임이 없는 연결에 보내는 {@code JOIN_OK}·{@code JOIN_FAIL}은 여기로 보내지 않는다(#4·#5).
+     * 아직 닉네임이 없는 연결에 보내는 {@code JOIN_OK}·{@code JOIN_FAIL}은 {@code net}이 그 연결에 직접 보낸다
+     * ({@link ConnectionListener} 참고).
      */
     void sendTo(String nickname, Message message);
 }
