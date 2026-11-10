@@ -83,7 +83,7 @@ class SocketServerTest {
 
         // when
         client.send("CHAT|몰래");
-        client.join("이건");
+        join(client, "이건");
         client.send("CHAT|입장 후");
 
         // then
@@ -96,7 +96,7 @@ class SocketServerTest {
     void duplicateNickname() throws Exception {
         // given
         RawClient first = connect();
-        first.join("이건");
+        join(first, "이건");
         RawClient second = connect();
 
         // when
@@ -131,7 +131,7 @@ class SocketServerTest {
     void rejectedConnectionGetsNoBroadcast() throws Exception {
         // given
         RawClient joinedClient = connect();
-        joinedClient.join("이건");
+        join(joinedClient, "이건");
         listener.rejectReason = "게임 진행 중";
         RawClient rejected = connect();
         rejected.send("JOIN|주성");
@@ -165,7 +165,7 @@ class SocketServerTest {
     void ignoreBrokenLines() throws Exception {
         // given
         RawClient client = connect();
-        client.join("이건");
+        join(client, "이건");
 
         // when
         client.send("");
@@ -184,9 +184,9 @@ class SocketServerTest {
     void survivesAbruptDisconnect() throws Exception {
         // given
         RawClient leaving = connect();
-        leaving.join("주성");
+        join(leaving, "주성");
         RawClient staying = connect();
-        staying.join("이건");
+        join(staying, "이건");
 
         // when
         leaving.closeQuietly();
@@ -205,9 +205,9 @@ class SocketServerTest {
     void concurrentSendsDoNotMix() throws Exception {
         // given
         RawClient a = connect();
-        a.join("이건");
+        join(a, "이건");
         RawClient b = connect();
-        b.join("주성");
+        join(b, "주성");
         int threads = 10;
         int perThread = 100;
         CountDownLatch ready = new CountDownLatch(1);
@@ -248,7 +248,7 @@ class SocketServerTest {
     void tooLongMessageIsDropped() throws Exception {
         // given
         RawClient client = connect();
-        client.join("이건");
+        join(client, "이건");
 
         // when
         registry.sendTo("이건", Message.of(MessageType.SYSTEM, "가".repeat(30_000)));
@@ -265,6 +265,12 @@ class SocketServerTest {
     }
 
     // ── 도우미 ─────────────────────────────────────
+
+    /** 입장하고, 서버가 입장 처리(보내기 목록에 넣기 → joined)까지 마칠 때까지 기다린다. */
+    private void join(RawClient client, String nickname) throws Exception {
+        client.join(nickname);
+        assertEquals(nickname, listener.joined.poll(2, TimeUnit.SECONDS));
+    }
 
     private RawClient connect() throws IOException {
         RawClient client = new RawClient(server.port());
