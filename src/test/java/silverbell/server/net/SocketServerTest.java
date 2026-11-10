@@ -127,6 +127,40 @@ class SocketServerTest {
     }
 
     @Test
+    @DisplayName("입장이 거절된 연결은 다른 사람에게 가는 메시지를 받지 않는다")
+    void rejectedConnectionGetsNoBroadcast() throws Exception {
+        // given
+        RawClient joinedClient = connect();
+        joinedClient.join("이건");
+        listener.rejectReason = "게임 진행 중";
+        RawClient rejected = connect();
+        rejected.send("JOIN|주성");
+        assertEquals("JOIN_FAIL|게임 진행 중", rejected.receive());
+
+        // when
+        registry.broadcast(Message.of(MessageType.SYSTEM, "입장한 사람에게만"));
+
+        // then
+        assertEquals("SYSTEM|입장한 사람에게만", joinedClient.receive());
+        assertNull(rejected.receiveWithin(300));
+    }
+
+    @Test
+    @DisplayName("새 참가자는 JOIN_OK를 먼저 받고, 그 뒤 입장 처리에서 보낸 메시지를 받는다")
+    void joinOkComesFirst() throws Exception {
+        // given
+        listener.announceTo = registry;
+        RawClient client = connect();
+
+        // when
+        client.send("JOIN|이건");
+
+        // then
+        assertEquals("JOIN_OK|", client.receive());
+        assertEquals("SYSTEM|이건 입장", client.receive());
+    }
+
+    @Test
     @DisplayName("빈 줄, |가 없는 줄, 모르는 타입, 서버 전용 메시지를 받아도 무시하고 연결은 유지된다")
     void ignoreBrokenLines() throws Exception {
         // given
@@ -302,11 +336,15 @@ class SocketServerTest {
         }
     }
 
-    /** 게임 쪽 대신 입장·퇴장을 기록한다. {@code rejectReason}을 넣으면 그 사유로 거절한다. */
+    /**
+     * 게임 쪽 대신 입장·퇴장을 기록한다. {@code rejectReason}을 넣으면 그 사유로 거절하고,
+     * {@code announceTo}를 넣으면 입장 때 모두에게 {@code SYSTEM|닉네임 입장}을 보낸다.
+     */
     private static final class RecordingListener implements ConnectionListener {
         final BlockingQueue<String> joined = new LinkedBlockingQueue<>();
         final BlockingQueue<String> left = new LinkedBlockingQueue<>();
         volatile String rejectReason;
+        volatile ClientRegistry announceTo;
 
         @Override
         public String tryJoin(String nickname) {
@@ -316,6 +354,10 @@ class SocketServerTest {
         @Override
         public void joined(String nickname) {
             joined.add(nickname);
+            ClientRegistry registry = announceTo;
+            if (registry != null) {
+                registry.broadcast(Message.of(MessageType.SYSTEM, nickname + " 입장"));
+            }
         }
 
         @Override

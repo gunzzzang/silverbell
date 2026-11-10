@@ -153,6 +153,7 @@ public final class ClientHandler implements Runnable {
         }
         nickname = requested;
         send(Message.of(MessageType.JOIN_OK));
+        registry.activate(requested, this); // JOIN_OK를 먼저 받은 뒤부터 전체 메시지를 받는다
         try {
             listener.joined(requested);
         } catch (RuntimeException e) {

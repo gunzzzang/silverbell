@@ -80,7 +80,13 @@ public final class ConsoleClient {
             System.out.println("사용법: /burst 횟수 보낼줄");
             return;
         }
-        int count = Integer.parseInt(parts[1]);
+        int count;
+        try {
+            count = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException e) {
+            System.out.println("횟수는 숫자로 써 주세요: /burst 20 CHAT|동시");
+            return;
+        }
         for (int i = 1; i <= count; i++) {
             send(out, parts[2] + " " + i);
         }

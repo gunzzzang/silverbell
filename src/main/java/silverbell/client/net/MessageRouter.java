@@ -28,6 +28,7 @@ import silverbell.common.MessageType;
  * (예제는 받는 스레드에서 {@code textArea}를 고쳐 가끔 화면이 깨질 수 있었다.)
  *
  * <p>한 종류에 여러 곳이 등록할 수 있다. 예: {@code SCORE}는 점수판과 결과 화면이 같이 받는다.
+ * 등록은 {@code ServerConnection.connect} 전에 마친다. 접속 직후 오는 {@code JOIN_OK} 등을 놓치지 않게 하기 위해서다.
  */
 public final class MessageRouter implements MessageListener {
 
