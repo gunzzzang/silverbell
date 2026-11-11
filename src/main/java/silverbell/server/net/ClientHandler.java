@@ -1,13 +1,12 @@
 package silverbell.server.net;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.UTFDataFormatException;
 import java.net.Socket;
+import java.util.Vector;
 
 import silverbell.common.Message;
 import silverbell.common.MessageType;
@@ -29,7 +28,7 @@ import silverbell.server.handler.MessageDispatcher;
  *       메시지가 섞이지 않는다.</li>
  * </ul>
  */
-public final class ClientHandler implements Runnable {
+public final class ClientHandler extends Thread {
 
     /** {@code JOIN_FAIL} 사유. 나머지 사유는 {@link ConnectionListener#tryJoin}이 정한다 (#5). */
     static final String DUPLICATE_NICKNAME = "닉네임 중복";
@@ -41,20 +40,31 @@ public final class ClientHandler implements Runnable {
     private final MessageDispatcher dispatcher;
     private final ClientRegistry registry;
     private final ConnectionListener listener;
+    private final Vector<ClientHandler> connections;
     private final String address;
 
     /** 입장하기 전에는 {@code null}. 받는 스레드만 쓰고, 로그·보내기에서 읽기만 한다. */
     private volatile String nickname;
 
-    ClientHandler(Socket socket, MessageDispatcher dispatcher, ClientRegistry registry, ConnectionListener listener)
-            throws IOException {
+    /**
+     * @param connections 서버의 연결 목록. 예제 {@code UserService}가 {@code UserVec}을 받아 두듯이 받아 두고,
+     *                    끊길 때 여기서 스스로 빠진다.
+     */
+    ClientHandler(Socket socket, MessageDispatcher dispatcher, ClientRegistry registry, ConnectionListener listener,
+                  Vector<ClientHandler> connections) throws IOException {
         this.socket = socket;
-        this.in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-        this.out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+        this.in = new DataInputStream(socket.getInputStream());    // 소켓 입력 스트림
+        this.out = new DataOutputStream(socket.getOutputStream()); // 소켓 출력 스트림
         this.dispatcher = dispatcher;
         this.registry = registry;
         this.listener = listener;
+        this.connections = connections;
         this.address = socket.getRemoteSocketAddress().toString();
+    }
+
+    /** 입장한 닉네임. 입장 전이면 {@code null}. */
+    String nickname() {
+        return nickname;
     }
 
     /** 연결이 끊길 때까지 메시지를 받는다. 끊기면 목록에서 빼고 게임에 퇴장을 알린다. */
@@ -63,7 +73,7 @@ public final class ClientHandler implements Runnable {
         ServerLog.info("접속 " + address);
         try {
             while (true) {
-                String line = in.readUTF();
+                String line = in.readUTF(); // 메시지가 올 때까지 대기
                 ServerLog.info("받음 " + who() + ": " + line);
                 handleLine(line);
             }
@@ -88,7 +98,7 @@ public final class ClientHandler implements Runnable {
         }
         String line = message.toLine();
         try {
-            out.writeUTF(line);
+            out.writeUTF(line); // 메시지 하나 전송
             out.flush();
             ServerLog.info("보냄 " + who() + ": " + line);
             return true;
@@ -106,7 +116,7 @@ public final class ClientHandler implements Runnable {
     void close() {
         try {
             socket.close();
-        } catch (IOException ignored) {
+        } catch (IOException e) {
             // 이미 닫혔다
         }
     }
@@ -145,15 +155,19 @@ public final class ClientHandler implements Runnable {
             return;
         }
         String requested = message.body().strip();
-        String reason = registry.reserve(requested, this) ? askJoin(requested) : DUPLICATE_NICKNAME;
+        if (!registry.reserve(requested)) { // 닉네임 중복 검사와 잡기를 한 번에
+            send(Message.of(MessageType.JOIN_FAIL, DUPLICATE_NICKNAME));
+            return;
+        }
+        String reason = askJoin(requested);
         if (reason != null) {
-            registry.release(requested, this);
+            registry.release(requested); // 잡아 둔 이름을 놓아 다시 쓸 수 있게
             send(Message.of(MessageType.JOIN_FAIL, reason));
             return;
         }
         nickname = requested;
         send(Message.of(MessageType.JOIN_OK));
-        registry.activate(requested, this); // JOIN_OK를 먼저 받은 뒤부터 전체 메시지를 받는다
+        registry.activate(this); // JOIN_OK를 먼저 받은 뒤부터 전체 메시지를 받는다
         try {
             listener.joined(requested);
         } catch (RuntimeException e) {
@@ -175,12 +189,13 @@ public final class ClientHandler implements Runnable {
 
     private void cleanup() {
         close();
+        connections.remove(this); // 서버 연결 목록에서 빠진다
         String name = nickname;
         if (name == null) {
             ServerLog.info("연결 종료 " + address + " (입장 전)");
             return;
         }
-        registry.release(name, this);
+        registry.release(name);
         ServerLog.info("퇴장 " + name);
         try {
             listener.left(name);
