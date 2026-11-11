@@ -1,6 +1,5 @@
 package silverbell.client;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -47,13 +46,17 @@ public final class ConsoleClient {
         }
         System.out.println("접속했어요 " + host + ":" + port + " · 보낼 줄을 입력하세요 (예: JOIN|이건, CHAT|안녕, /burst 20 CHAT|동시, /quit)");
 
-        DataInputStream in = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-        Thread reader = new Thread(() -> printReceived(in), "console-reader");
-        reader.setDaemon(true);
+        DataInputStream in = new DataInputStream(socket.getInputStream());    // 소켓 입력 스트림
+        DataOutputStream out = new DataOutputStream(socket.getOutputStream()); // 소켓 출력 스트림
+        Thread reader = new Thread(new Runnable() { // 받는 스레드. 예제 MessengerMulti와 같은 모양
+            @Override
+            public void run() {
+                printReceived(in);
+            }
+        });
         reader.start();
 
-        BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in));
+        BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in)); // 키보드 입력 (TestKeyboard3)
         String line;
         while ((line = keyboard.readLine()) != null) {
             if (line.equals("/quit")) {

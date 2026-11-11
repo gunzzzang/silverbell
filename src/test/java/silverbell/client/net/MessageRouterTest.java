@@ -14,7 +14,7 @@ import silverbell.common.MessageType;
 class MessageRouterTest {
 
     /** 화면 스레드 대신 바로 부른다. */
-    private final MessageRouter router = new MessageRouter(Runnable::run);
+    private final MessageRouter router = new MessageRouter(false);
 
     @Test
     @DisplayName("등록한 종류의 메시지만 그 곳이 받는다")
