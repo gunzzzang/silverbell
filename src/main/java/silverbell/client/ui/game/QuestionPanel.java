@@ -34,6 +34,7 @@ class QuestionPanel extends JPanel {
      * QUESTION   「문제 n · 유형 · 난이도 점수」, 문제, 시간 바 시작 (#11)
      * HINT       힌트 칸에 초성 힌트, 바뀐 점수 (#18)
      * REVEAL     정답 초록색 표시 (#11)
+     * TURN       누가 답하는 동안 시간 바 멈춤(회색), 차례가 없어지면 다시 흐름 (#11)
      * </pre>
      */
     void register(MessageRouter router) {
