@@ -18,11 +18,12 @@ import silverbell.client.net.MessageRouter;
  *
  * <pre>
  * ┌─────────────── 문제 QuestionPanel (A) ───────────────┐
- * │ 문제 n · 유형 · 점수 / 문제 / 보기 1~4 / 힌트 / 시간 바  │
+ * │ 문제 n · 유형 · 점수 / 문제 / 힌트 / 시간 바            │
  * ├──────────────────────────────┬───────────────────────┤
  * │ 벨 BellPanel (B)             │ 벨 순서 QueuePanel (B)  │
  * │                              ├───────────────────────┤
  * │ 답 입력 AnswerPanel (B)       │ 점수판 ScorePanel (A)   │
+ * │ 보기 1~4 또는 입력칸          │                       │
  * ├──────────────────────────────┴───────────────────────┤
  * │ 채팅 ChatPanel (A)                                     │
  * └──────────────────────────────────────────────────────┘
@@ -41,8 +42,9 @@ import silverbell.client.net.MessageRouter;
  */
 public final class GameScreen extends JPanel {
 
-    private static final int QUESTION_HEIGHT = 200;
-    private static final int ANSWER_HEIGHT = 100;
+    private static final int QUESTION_HEIGHT = 150;
+    /** 보기 버튼 2×2(높이 48, UI 명세서 5절) + 안내 한 줄이 들어갈 높이 */
+    private static final int ANSWER_HEIGHT = 150;
     private static final int SIDE_WIDTH = 240;
     private static final int CHAT_HEIGHT = 150;
     /** UI 명세서 5절: 패널 바깥 여백 16, 요소 사이 8 */
