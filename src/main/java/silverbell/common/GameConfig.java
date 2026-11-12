@@ -15,6 +15,8 @@ public final class GameConfig {
     public static final int DEFAULT_PORT = 5050;
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 4;
+    /** 클라이언트가 서버 접속을 기다리는 최대 시간(밀리초). 서버가 없으면 이 시간 안에 실패를 알린다(N5) */
+    public static final int CONNECT_TIMEOUT_MS = 3_000;
 
     // ── 시간 (밀리초, 임시값) ─────────────────────
     /** C2 문제 타이머 — 답변 차례 동안은 멈춘다 */
