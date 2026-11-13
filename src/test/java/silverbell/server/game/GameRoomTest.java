@@ -3,6 +3,7 @@ package silverbell.server.game;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import silverbell.common.GameConfig;
 import silverbell.common.JoinFailReason;
 import silverbell.common.Message;
 import silverbell.common.MessageType;
@@ -70,17 +71,18 @@ class GameRoomTest {
     }
 
     @Test
-    @DisplayName("닉네임 규칙(길이 1~10자, 공백·세미콜론·파이프 금지)을 어기면 실패 사유를 반환한다")
+    @DisplayName("닉네임 규칙(길이 1~10자, 공백·세미콜론·파이프·콜론 금지)을 어기면 실패 사유를 반환한다")
     void testInvalidNickname() {
         // 길이 위반 (공백 제거 후 0자 또는 11자 이상)
         assertEquals(JoinFailReason.INVALID_NICKNAME_LENGTH, gameRoom.tryJoin(null));
         assertEquals(JoinFailReason.INVALID_NICKNAME_LENGTH, gameRoom.tryJoin("   "));
         assertEquals(JoinFailReason.INVALID_NICKNAME_LENGTH, gameRoom.tryJoin("12345678901"));
 
-        // 금지 문자 위반
+        // 금지 문자 위반 (공백, ;, |, :)
         assertEquals(JoinFailReason.INVALID_NICKNAME_CHAR, gameRoom.tryJoin("User 1"));
         assertEquals(JoinFailReason.INVALID_NICKNAME_CHAR, gameRoom.tryJoin("User;1"));
         assertEquals(JoinFailReason.INVALID_NICKNAME_CHAR, gameRoom.tryJoin("User|1"));
+        assertEquals(JoinFailReason.INVALID_NICKNAME_CHAR, gameRoom.tryJoin("주성:HOST"));
 
         // 앞뒤 공백은 trim 후 10자 이내면 정상 허용
         assertNull(gameRoom.tryJoin("  ValidUser  "));
@@ -95,13 +97,13 @@ class GameRoomTest {
     }
 
     @Test
-    @DisplayName("정원 4명 초과 시 입장이 거부된다")
+    @DisplayName("최대 정원 초과 시 입장이 거부된다")
     void testMaxCapacity() {
-        for (int i = 1; i <= 4; i++) {
+        for (int i = 1; i <= GameConfig.MAX_PLAYERS; i++) {
             assertNull(gameRoom.tryJoin("User" + i));
         }
 
-        assertEquals(JoinFailReason.ROOM_FULL, gameRoom.tryJoin("User5"));
+        assertEquals(JoinFailReason.ROOM_FULL, gameRoom.tryJoin("UserExtra"));
     }
 
     @Test
