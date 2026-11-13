@@ -62,6 +62,7 @@ public class GameRoom implements ConnectionListener {
     @Override
     public synchronized void joined(String nickname) {
         broadcastUsersList();
+        broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + "님이 입장했습니다."));
     }
 
     /**
@@ -70,12 +71,15 @@ public class GameRoom implements ConnectionListener {
     @Override
     public synchronized void left(String nickname) {
         boolean removed = players.removeIf(p -> p.getNickname().equals(nickname));
-        if (removed && !players.isEmpty()) {
-            // 방장이 나갔다면 남은 첫 번째 유저에게 방장 위임
-            if (players.stream().noneMatch(Player::isHost)) {
-                players.get(0).setHost(true);
+        if (removed) {
+            broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + "님이 퇴장했습니다."));
+            if (!players.isEmpty()) {
+                // 방장이 나갔다면 남은 첫 번째 유저에게 방장 위임
+                if (players.stream().noneMatch(Player::isHost)) {
+                    players.get(0).setHost(true);
+                }
+                broadcastUsersList();
             }
-            broadcastUsersList();
         }
     }
 

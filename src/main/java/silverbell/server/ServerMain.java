@@ -9,6 +9,7 @@ import silverbell.server.game.GameRoom;
 import silverbell.server.handler.MessageDispatcher;
 import silverbell.server.net.ClientRegistry;
 import silverbell.server.net.SocketServer;
+import silverbell.server.handler.ChatHandler;
 
 /**
  * 서버 시작점. 객체를 한 번씩 만들어 서로 연결하고, 메시지 핸들러를 등록하고, 포트를 연다.
@@ -42,9 +43,7 @@ public final class ServerMain {
 
     /** 메시지 종류별 핸들러를 등록한다. 서버로 오면 안 되는 종류(SCORE 등)는 등록하지 않아 무시된다(N7). */
     private static void registerHandlers(MessageDispatcher dispatcher, ClientRegistry registry) {
-        // 임시: #6에서 ChatHandler(정답 가리기 포함)로 바꾼다. 그때까지는 접속 테스트용으로 받은 그대로 모두에게 전달한다.
-        dispatcher.register(MessageType.CHAT,
-                (sender, message) -> registry.broadcast(Message.of(MessageType.CHAT, sender, message.body())));
+        dispatcher.register(MessageType.CHAT, new ChatHandler(registry));
     }
 
     // 3. temporaryLobby() 메서드 및 안 쓰는 import(ConnectionListener, ServerLog) 삭제

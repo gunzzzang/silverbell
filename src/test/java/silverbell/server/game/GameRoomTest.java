@@ -3,6 +3,7 @@ package silverbell.server.game;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import silverbell.common.GameConfig;
 import silverbell.common.JoinFailReason;
 import silverbell.common.Message;
 import silverbell.common.MessageType;
@@ -45,28 +46,28 @@ class GameRoomTest {
     }
 
     @Test
-    @DisplayName("첫 번째 접속자가 방장이 되고 joined 호출 시 USERS 메시지가 전달된다")
+    @DisplayName("첫 번째 접속자가 방장이 되고 joined 호출 시 USERS와 SYSTEM 메시지가 전달된다")
     void testFirstUserIsHostAndBroadcastsUsers() {
         // 1. 입장 시도 (tryJoin)
         assertNull(gameRoom.tryJoin("User1"));
         assertTrue(gameRoom.getPlayers().get(0).isHost());
-        // tryJoin만 불렸을 때는 아직 USERS가 방송되지 않아야 함 (JOIN_OK 순서 보장)
+        // tryJoin만 불렸을 때는 아직 메시지가 방송되지 않아야 함 (JOIN_OK 순서 보장)
         assertEquals(0, broadcaster.broadcastedMessages.size());
 
-        // 2. JOIN_OK 이후 joined 호출
+        // 2. JOIN_OK 이후 joined 호출 (USERS + SYSTEM 2건 전송)
         gameRoom.joined("User1");
-        assertEquals(1, broadcaster.broadcastedMessages.size());
+        assertEquals(2, broadcaster.broadcastedMessages.size());
 
-        Message msg = broadcaster.broadcastedMessages.get(0);
-        assertEquals(MessageType.USERS, msg.type());
-        assertEquals("User1:HOST:NOT_READY", msg.body());
+        Message usersMsg = broadcaster.broadcastedMessages.get(0);
+        assertEquals(MessageType.USERS, usersMsg.type());
+        assertEquals("User1:HOST:NOT_READY", usersMsg.body());
 
         // 3. 두 번째 유저 입장 시 GUEST로 추가됨
         assertNull(gameRoom.tryJoin("User2"));
         gameRoom.joined("User2");
         assertFalse(gameRoom.getPlayers().get(1).isHost());
         assertEquals("User1:HOST:NOT_READY;User2:GUEST:NOT_READY",
-                broadcaster.broadcastedMessages.get(1).body());
+                broadcaster.broadcastedMessages.get(2).body());
     }
 
     @Test
@@ -98,7 +99,7 @@ class GameRoomTest {
     @Test
     @DisplayName("최대 정원 초과 시 입장이 거부된다")
     void testMaxCapacity() {
-        for (int i = 1; i <= silverbell.common.GameConfig.MAX_PLAYERS; i++) {
+        for (int i = 1; i <= GameConfig.MAX_PLAYERS; i++) {
             assertNull(gameRoom.tryJoin("User" + i));
         }
 
@@ -168,5 +169,28 @@ class GameRoomTest {
         assertEquals(4, gameRoom.getPlayers().size());
         // 방장은 오직 1명만 존재해야 함
         assertEquals(1, gameRoom.getPlayers().stream().filter(GameRoom.Player::isHost).count());
+    }
+
+    @Test
+    @DisplayName("입장 시 SYSTEM 안내 메시지를 전체에 전송한다")
+    void testBroadcastSystemMessageOnJoin() {
+        gameRoom.tryJoin("주성");
+        gameRoom.joined("주성");
+
+        assertTrue(broadcaster.broadcastedMessages.stream().anyMatch(m ->
+                m.type() == MessageType.SYSTEM && m.body().equals("주성님이 입장했습니다.")));
+    }
+
+    @Test
+    @DisplayName("퇴장 시 SYSTEM 안내 메시지를 전체에 전송한다")
+    void testBroadcastSystemMessageOnLeave() {
+        gameRoom.tryJoin("주성");
+        gameRoom.joined("주성");
+        broadcaster.broadcastedMessages.clear();
+
+        gameRoom.left("주성");
+
+        assertTrue(broadcaster.broadcastedMessages.stream().anyMatch(m ->
+                m.type() == MessageType.SYSTEM && m.body().equals("주성님이 퇴장했습니다.")));
     }
 }
