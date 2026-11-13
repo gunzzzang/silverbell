@@ -2,6 +2,7 @@ package silverbell.server.game;
 
 import java.util.ArrayList;
 import java.util.List;
+import silverbell.common.GameConfig;
 import silverbell.common.JoinFailReason;
 import silverbell.common.Message;
 import silverbell.common.MessageType;
@@ -22,7 +23,6 @@ import silverbell.common.MessageType;
  * </ul>
  */
 public class GameRoom implements ConnectionListener {
-    private static final int MAX_PLAYERS = 4;
 
     private final Broadcaster broadcaster;
     private final List<Player> players = new ArrayList<>();
@@ -40,7 +40,7 @@ public class GameRoom implements ConnectionListener {
         if (isGaming) {
             return JoinFailReason.GAME_IN_PROGRESS;
         }
-        if (players.size() >= MAX_PLAYERS) {
+        if (players.size() >= GameConfig.MAX_PLAYERS) {
             return JoinFailReason.ROOM_FULL;
         }
 
@@ -87,7 +87,7 @@ public class GameRoom implements ConnectionListener {
         if (nickname.isEmpty() || nickname.length() > 10) {
             return JoinFailReason.INVALID_NICKNAME_LENGTH;
         }
-        if (nickname.contains(" ") || nickname.contains(";") || nickname.contains("|")) {
+        if (nickname.contains(" ") || nickname.contains(";") || nickname.contains("|") || nickname.contains(":")) {
             return JoinFailReason.INVALID_NICKNAME_CHAR;
         }
         // net(ClientRegistry)에서 먼저 거르지만, GameRoom 단독 단위 테스트를 위해 방어 코드 유지
@@ -119,9 +119,13 @@ public class GameRoom implements ConnectionListener {
         broadcaster.broadcast(usersMessage);
     }
 
-    // 방어적 복사본 반환 (외부 순회 시 ConcurrentModificationException 방지)
+    // 리스트와 내부 Player 객체 모두 값만 복사해 반환 (외부 상태 변조 및 동시성 오류 방지)
     public synchronized List<Player> getPlayers() {
-        return new ArrayList<>(players);
+        List<Player> snapshot = new ArrayList<>(players.size());
+        for (Player p : players) {
+            snapshot.add(new Player(p));
+        }
+        return snapshot;
     }
 
     // 테스트 및 추후 게임 진행 상태 제어용
@@ -140,10 +144,16 @@ public class GameRoom implements ConnectionListener {
             this.isReady = false;
         }
 
+        private Player(Player other) {
+            this.nickname = other.nickname;
+            this.isHost = other.isHost;
+            this.isReady = other.isReady;
+        }
+
         public String getNickname() { return nickname; }
         public boolean isHost() { return isHost; }
-        public void setHost(boolean host) { isHost = host; }
+        void setHost(boolean host) { isHost = host; }
         public boolean isReady() { return isReady; }
-        public void setReady(boolean ready) { isReady = ready; }
+        void setReady(boolean ready) { isReady = ready; }
     }
 }
