@@ -8,6 +8,7 @@ import java.io.UTFDataFormatException;
 import java.net.Socket;
 import java.util.Vector;
 
+import silverbell.common.JoinFailReason;
 import silverbell.common.Message;
 import silverbell.common.MessageType;
 import silverbell.server.game.ConnectionListener;
@@ -31,7 +32,7 @@ import silverbell.server.handler.MessageDispatcher;
 public final class ClientHandler extends Thread {
 
     /** {@code JOIN_FAIL} 사유. 나머지 사유는 {@link ConnectionListener#tryJoin}이 정한다 (#5). */
-    static final String DUPLICATE_NICKNAME = "닉네임 중복";
+    static final String DUPLICATE_NICKNAME = JoinFailReason.DUPLICATE_NICKNAME;
     static final String SERVER_ERROR = "서버 오류";
 
     private final Socket socket;

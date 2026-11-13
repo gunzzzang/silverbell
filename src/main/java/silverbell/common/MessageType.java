@@ -14,9 +14,15 @@ public enum MessageType {
     JOIN,
     /** 서버 → 클라 · (없음) · A1 서버 접속 */
     JOIN_OK,
-    /** 서버 → 클라 · 실패 사유(닉네임 중복 / 인원 초과 / 게임 진행 중) · A1, A2 */
+    /**
+     * 서버 → 클라 · 실패 사유({@link JoinFailReason}: 닉네임 중복 / 인원 초과 / 게임 진행 중 /
+     * 닉네임은 1~10자여야 합니다 / 닉네임에 공백이나 ';', '|'를 쓸 수 없습니다) · A1, A2
+     */
     JOIN_FAIL,
-    /** 서버 → 전체 · 방장;준비 상태가 붙은 참가자 목록 · A2 참가자 목록, A3 게임 시작 */
+    /**
+     * 서버 → 전체 · 참가자 목록({@code 닉네임:HOST|GUEST:READY|NOT_READY} 형식을 {@code ;}로 구분,
+     * 예: {@code User1:HOST:NOT_READY;User2:GUEST:READY}) · A2 참가자 목록, A3 게임 시작
+     */
     USERS,
     /** 클라 → 서버 · 준비 / 준비 취소 · A3 게임 시작 */
     READY,
