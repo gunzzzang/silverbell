@@ -16,8 +16,8 @@ package silverbell.server.game.answer;
 public class AnswerCheckerSelector {
 
     /** 유형 이름. {@code QuestionDeck}이 문제 파일에서 읽어 {@code Question.getType()}으로 주는 값과 같다 */
-    public static final String MULTIPLE_CHOICE = "4지선다";
-    public static final String SHORT_ANSWER = "단답형";
+    private static final String MULTIPLE_CHOICE = "4지선다";
+    private static final String SHORT_ANSWER = "단답형";
 
     // 채점기는 상태가 없어서 하나씩만 만들어 여러 스레드가 같이 써도 된다
     private final AnswerChecker multipleChoiceChecker = new MultipleChoiceChecker();

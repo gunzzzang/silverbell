@@ -24,15 +24,15 @@ public class MultipleChoiceChecker implements AnswerChecker {
         if (answers == null || input == null) {
             return false;
         }
-        String number = input.trim(); // 앞뒤 공백 무시 (" 4" → "4")
+        String number = input.trim(); // 앞뒤 공백 제거 (" 4" → "4")
         if (!isChoiceNumber(number)) {
             return false;
         }
         return answers.contains(number);
     }
 
-    /** 1~4 한 글자인지. {@code Integer.parseInt}는 "abc"에서 예외가 나서 글자로 비교한다 */
+    /** 1~4인지. {@code Integer.parseInt}는 "넷"에서 예외가 나서 문자열로 비교한다({@code QuestionDeck}과 같은 방식) */
     private boolean isChoiceNumber(String number) {
-        return number.length() == 1 && number.charAt(0) >= '1' && number.charAt(0) <= '4';
+        return "1".equals(number) || "2".equals(number) || "3".equals(number) || "4".equals(number);
     }
 }

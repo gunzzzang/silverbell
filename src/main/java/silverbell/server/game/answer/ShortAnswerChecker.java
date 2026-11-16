@@ -18,7 +18,7 @@ import java.util.List;
 public class ShortAnswerChecker implements AnswerChecker {
 
     /**
-     * 공백을 모두 빼고 대소문자를 무시해 정답 후보 중 하나와 같으면 {@code true}.
+     * 띄어쓰기를 모두 빼고 대소문자를 무시해 정답 후보 중 하나와 같으면 {@code true}.
      * {@code null}·빈 값·공백만 있는 입력은 예외 없이 {@code false}.
      */
     @Override
@@ -26,30 +26,15 @@ public class ShortAnswerChecker implements AnswerChecker {
         if (answers == null || input == null) {
             return false;
         }
-        String typed = removeSpaces(input);
+        String typed = input.replace(" ", ""); // 앞뒤·중간 띄어쓰기 모두 제거 (trim은 앞뒤만 지운다)
         if (typed.isEmpty()) { // 공백만 보낸 답이 빈 정답 후보와 같아지지 않게
             return false;
         }
         for (String answer : answers) {
-            if (answer != null && removeSpaces(answer).equalsIgnoreCase(typed)) { // 대소문자 무시 비교
+            if (answer != null && answer.replace(" ", "").equalsIgnoreCase(typed)) { // 대소문자 무시 비교
                 return true;
             }
         }
         return false;
-    }
-
-    /**
-     * 띄어쓰기·탭 등 공백 글자를 모두 뺀다. 문장 중간 공백도 빼야 해서 {@code trim()}으로는 부족하다.
-     * {@code Character.isWhitespace}는 한글 입력기의 전각 공백도 공백으로 본다.
-     */
-    private String removeSpaces(String text) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (!Character.isWhitespace(c)) {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 }
