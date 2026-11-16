@@ -14,13 +14,14 @@ import java.util.List;
  * 유형에 맞는 채점기는 {@link AnswerCheckerSelector}가 고른다.
  * 새 유형(예: OX)이 생기면 구현 클래스를 추가하고 {@code AnswerCheckerSelector}에 한 줄 더한다.
  *
- * <p><b>모든 구현이 지킬 약속</b>: 어떤 입력이 와도({@code null}, 빈 문자열, 공백, 엉뚱한 값) 예외를 던지지 않고
+ * <p><b>모든 구현이 지킬 약속</b>: 플레이어가 어떤 답을 보내도({@code null}, 빈 문자열, 공백, 엉뚱한 값) 예외를 던지지 않고
  * {@code true}/{@code false}만 돌려준다. 그래야 채점하는 쪽이 구현을 바꿔 끼워도 그대로 동작한다.
  */
 public interface AnswerChecker {
 
     /**
-     * @param answers 정답 후보들. 4지선다는 정답 번호 하나("4"), 단답형은 문제 파일의 {@code /}로 나눈 표기들
+     * @param answers 정답 후보들. 4지선다는 정답 번호 하나("4"), 단답형은 문제 파일의 {@code /}로 나눈 표기들.
+     *                {@code QuestionDeck}이 검사한 값이라 {@code null}·빈 값이 없다
      * @param input   플레이어가 보낸 답안
      */
     boolean isCorrect(List<String> answers, String input);

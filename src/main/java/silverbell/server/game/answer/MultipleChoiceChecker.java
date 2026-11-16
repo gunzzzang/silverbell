@@ -12,16 +12,17 @@ import java.util.List;
  *
  * <p>정답 번호는 {@code QuestionDeck}이 보기를 섞은 뒤의 위치로 이미 바뀌어 있다
  * ({@code Question.shuffleChoices}). 그래서 여기서는 번호만 비교한다.
+ * 정답 목록은 {@code QuestionDeck}이 검사해 1~4 하나로 넘기므로 다시 검사하지 않는다.
  */
 public class MultipleChoiceChecker implements AnswerChecker {
 
     /**
      * 앞뒤 공백을 빼고 1~4 중 하나이면서 정답 번호와 같으면 {@code true}.
-     * {@code null}·빈 값·1~4가 아닌 값은 예외 없이 {@code false}.
+     * 답이 {@code null}·빈 값·1~4가 아닌 값이면 예외 없이 {@code false}.
      */
     @Override
     public boolean isCorrect(List<String> answers, String input) {
-        if (answers == null || input == null) {
+        if (input == null) {
             return false;
         }
         String number = input.trim(); // 앞뒤 공백 제거 (" 4" → "4")
