@@ -61,7 +61,7 @@ class MultipleChoiceCheckerTest {
     }
 
     @Test
-    @DisplayName("답이나 정답 목록이 null이어도 예외 없이 오답이다")
+    @DisplayName("답이 null이거나 정답 목록이 null·비어 있어도 예외 없이 오답이다")
     void nullInput() {
         // when, then
         assertFalse(checker.isCorrect(answers, null));

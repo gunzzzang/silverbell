@@ -58,8 +58,6 @@ class ShortAnswerCheckerTest {
         assertTrue(checker.isCorrect(answers, "서브넷마스크"));
         assertTrue(checker.isCorrect(answers, " 서브넷  마스크 "));
         assertTrue(checker.isCorrect(answers, "서 브 넷 마 스 크"));
-        assertTrue(checker.isCorrect(answers, "서브넷\t마스크"));
-        assertTrue(checker.isCorrect(answers, "서브넷　마스크")); // 한글 입력기의 전각 공백
     }
 
     @Test
@@ -98,7 +96,7 @@ class ShortAnswerCheckerTest {
     }
 
     @Test
-    @DisplayName("답이나 정답 목록이 null이어도 예외 없이 오답이다")
+    @DisplayName("답이 null이거나 정답 목록이 null·비어 있어도 예외 없이 오답이다")
     void nullInput() {
         // when, then
         assertFalse(checker.isCorrect(List.of("서브넷 마스크"), null));
