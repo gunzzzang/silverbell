@@ -11,9 +11,10 @@ import java.util.List;
  * </ul>
  *
  * <p>채점하는 쪽은 유형을 따지지 않고 {@code checker.isCorrect(...)}만 부른다.
- * 새 유형(예: OX)이 생기면 구현 클래스만 추가한다.
+ * 유형에 맞는 채점기는 {@link AnswerCheckerSelector}가 고른다.
+ * 새 유형(예: OX)이 생기면 구현 클래스를 추가하고 {@code AnswerCheckerSelector}에 한 줄 더한다.
  *
- * <p><b>모든 구현이 지킬 약속</b>: 어떤 입력이 와도(빈 문자열, 공백, 엉뚱한 값) 예외를 던지지 않고
+ * <p><b>모든 구현이 지킬 약속</b>: 어떤 입력이 와도({@code null}, 빈 문자열, 공백, 엉뚱한 값) 예외를 던지지 않고
  * {@code true}/{@code false}만 돌려준다. 그래야 채점하는 쪽이 구현을 바꿔 끼워도 그대로 동작한다.
  */
 public interface AnswerChecker {
