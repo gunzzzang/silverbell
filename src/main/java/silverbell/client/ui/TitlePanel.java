@@ -170,4 +170,8 @@ final class TitlePanel extends JPanel {
         statusLabel.setText(message);
         updateJoinButtonState();
     }
+
+    String getNickname() {
+        return nicknameField.getText().strip(); // 실제 필드명에 맞춤
+    }
 }

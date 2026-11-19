@@ -1,13 +1,21 @@
 package silverbell.client.ui.game;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Font;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
+import javax.swing.Timer;
 
 import silverbell.client.net.MessageRouter;
+import silverbell.common.Message;
+import silverbell.common.MessageType;
 
 /**
  * 문제 영역: 「문제 n · 유형 · 난이도 점수」, 문제 글, 단답형 초성 힌트 칸, 남은 시간 바.
@@ -16,14 +24,55 @@ import silverbell.client.net.MessageRouter;
  *
  * <p><b>담당: 라인 A</b>. 이 영역은 이 클래스만 고친다. 다른 영역을 고칠 일이 생기면 그 담당과 먼저 이야기한다.
  *
- * <p>지금은 자리만 잡은 빈 패널이다(#7). 꾸미기는 M4(#26).
+ * <p>M2(#11)에서 최소 Swing 컴포넌트로 동작을 구현했다. 꾸미기는 M4(#26).
  */
 class QuestionPanel extends JPanel {
 
+    private static final int TIMER_TICK_MS = 100;
+    private static final Color ACTIVE_BAR_COLOR = new Color(66, 133, 244);
+    private static final Color PAUSED_BAR_COLOR = Color.GRAY;
+    private static final Color REVEAL_TEXT_COLOR = new Color(27, 138, 62);
+
+    private final JLabel infoLabel = new JLabel("대기 중...", SwingConstants.LEFT);
+    private final JTextArea questionArea = new JTextArea("문제");
+    private final JLabel revealLabel = new JLabel(" ", SwingConstants.CENTER);
+    private final JProgressBar timeBar = new JProgressBar();
+    private final JLabel timeTextLabel = new JLabel("0.0초", SwingConstants.RIGHT);
+
+    private Timer countdownTimer;
+    private int totalMs;
+    private int remainingMs;
+
     QuestionPanel() {
-        super(new BorderLayout());
+        super(new BorderLayout(8, 8));
         setBorder(BorderFactory.createTitledBorder("문제 (라인 A)"));
-        add(new JLabel("문제", SwingConstants.CENTER), BorderLayout.CENTER);
+
+        // 상단: 「문제 n · 유형 · 난이도 점수」
+        infoLabel.setFont(infoLabel.getFont().deriveFont(Font.BOLD, 14f));
+        add(infoLabel, BorderLayout.NORTH);
+
+        // 중단: 문제 글
+        questionArea.setEditable(false);
+        questionArea.setLineWrap(true);
+        questionArea.setWrapStyleWord(true);
+        questionArea.setFont(questionArea.getFont().deriveFont(16f));
+        add(new JScrollPane(questionArea), BorderLayout.CENTER);
+
+        // 하단: 정답 공개 라벨 + 남은 시간 바
+        revealLabel.setFont(revealLabel.getFont().deriveFont(Font.BOLD, 15f));
+        revealLabel.setForeground(REVEAL_TEXT_COLOR);
+
+        timeBar.setForeground(ACTIVE_BAR_COLOR);
+        JPanel timerRow = new JPanel(new BorderLayout(8, 0));
+        timerRow.add(timeBar, BorderLayout.CENTER);
+        timerRow.add(timeTextLabel, BorderLayout.EAST);
+
+        JPanel southPanel = new JPanel(new BorderLayout(4, 4));
+        southPanel.add(revealLabel, BorderLayout.NORTH);
+        southPanel.add(timerRow, BorderLayout.SOUTH);
+        add(southPanel, BorderLayout.SOUTH);
+
+        initTimer();
     }
 
     /**
@@ -38,6 +87,80 @@ class QuestionPanel extends JPanel {
      * </pre>
      */
     void register(MessageRouter router) {
-        // 각 이슈에서 위 표의 종류를 router.on(...)으로 등록한다
+        router.on(MessageType.QUESTION, this::onQuestion);
+        router.on(MessageType.REVEAL, this::onReveal);
+        router.on(MessageType.TURN, this::onTurn);
+    }
+
+    private void initTimer() {
+        countdownTimer = new Timer(TIMER_TICK_MS, e -> {
+            remainingMs -= TIMER_TICK_MS;
+            if (remainingMs <= 0) {
+                remainingMs = 0;
+                countdownTimer.stop();
+            }
+            refreshTimerView();
+        });
+    }
+
+    /**
+     * QUESTION|번호;유형;난이도;제한 시간(ms);보기1;보기2;보기3;보기4;문제
+     */
+    private void onQuestion(Message message) {
+        String[] values = message.values(9);
+        if (values.length < 9) {
+            return;
+        }
+        String number = values[0];
+        String type = values[1];
+        String difficulty = values[2];
+        int limitMs = Integer.parseInt(values[3]);
+        String prompt = values[8];
+
+        infoLabel.setText("문제 " + number + " · " + type + " · 난이도 " + difficulty + "점");
+        questionArea.setText(prompt);
+        revealLabel.setText(" ");
+
+        this.totalMs = limitMs;
+        this.remainingMs = limitMs;
+        timeBar.setMaximum(totalMs);
+        timeBar.setValue(totalMs);
+        timeBar.setForeground(ACTIVE_BAR_COLOR);
+        refreshTimerView();
+
+        countdownTimer.restart();
+    }
+
+    /**
+     * REVEAL|정답
+     */
+    private void onReveal(Message message) {
+        countdownTimer.stop();
+        revealLabel.setText("정답: " + message.body());
+    }
+
+    /**
+     * TURN|지금 차례인 사람;답변 시간
+     * 누가 답하는 동안 시간 바 멈춤(회색), 차례가 없어지면 다시 흐름
+     */
+    private void onTurn(Message message) {
+        String[] values = message.values(2);
+        String turnUser = values.length > 0 ? values[0].strip() : "";
+        boolean hasTurn = !turnUser.isEmpty() && !"NONE".equalsIgnoreCase(turnUser);
+
+        if (hasTurn) {
+            countdownTimer.stop();
+            timeBar.setForeground(PAUSED_BAR_COLOR);
+        } else {
+            timeBar.setForeground(ACTIVE_BAR_COLOR);
+            if (remainingMs > 0) {
+                countdownTimer.start();
+            }
+        }
+    }
+
+    private void refreshTimerView() {
+        timeBar.setValue(remainingMs);
+        timeTextLabel.setText(String.format("%.1f초", remainingMs / 1000.0));
     }
 }

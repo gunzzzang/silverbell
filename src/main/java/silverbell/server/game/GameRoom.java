@@ -2,6 +2,11 @@ package silverbell.server.game;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 import silverbell.common.GameConfig;
 import silverbell.common.JoinFailReason;
 import silverbell.common.Message;
@@ -25,11 +30,35 @@ import silverbell.common.MessageType;
 public class GameRoom implements ConnectionListener {
 
     private final Broadcaster broadcaster;
+    private final QuestionDeck questionDeck;
+    private final QuestionTimer questionTimer;
+    private final ScheduledExecutorService roundScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "round-scheduler");
+        t.setDaemon(true);
+        return t;
+    });
+
     private final List<Player> players = new ArrayList<>();
     private boolean isGaming = false;
+    private boolean roundActive = false;
+    private int questionNumber = 0;
+    private Question currentQuestion;
+    private ScheduledFuture<?> nextQuestionTask;
 
+    /** 기존 #5 테스트 호환용 생성자 */
     public GameRoom(Broadcaster broadcaster) {
+        this(broadcaster, new QuestionDeck(), new QuestionTimer());
+    }
+
+    /** 서버 실행 및 라운드 테스트용 생성자 */
+    public GameRoom(Broadcaster broadcaster, QuestionDeck questionDeck) {
+        this(broadcaster, questionDeck, new QuestionTimer());
+    }
+
+    GameRoom(Broadcaster broadcaster, QuestionDeck questionDeck, QuestionTimer questionTimer) {
         this.broadcaster = broadcaster;
+        this.questionDeck = questionDeck;
+        this.questionTimer = questionTimer;
     }
 
     /**
@@ -80,6 +109,131 @@ public class GameRoom implements ConnectionListener {
                 }
                 broadcastUsersList();
             }
+        }
+    }
+
+    /**
+     * 방장이 START를 눌렀을 때 게임을 시작하고 첫 문제를 출제한다 (#11 임시 시작, #19에서 준비 검증 연결).
+     * 방장이 아니거나 이미 게임 중이면 무시한다.
+     */
+    public synchronized void startGame(String requesterNickname) {
+        if (isGaming) {
+            return;
+        }
+        boolean isHost = players.stream()
+                .anyMatch(p -> p.getNickname().equals(requesterNickname) && p.isHost());
+        if (!isHost) {
+            return;
+        }
+        if (questionDeck.totalLoadedCount() == 0) {
+            broadcaster.broadcast(Message.of(MessageType.SYSTEM, "출제할 문제가 없습니다."));
+            return;
+        }
+
+        this.isGaming = true;
+        this.questionNumber = 0;
+        startNextQuestion();
+    }
+
+    /**
+     * 덱에서 문제를 꺼내 모든 참가자에게 QUESTION을 보내고 문제 타이머를 시작한다 (C1, C2).
+     */
+    public synchronized void startNextQuestion() {
+        if (!isGaming) {
+            return;
+        }
+        this.currentQuestion = questionDeck.drawNext();
+        this.questionNumber++;
+        this.roundActive = true;
+
+        // 단답형은 choices가 비어 있으므로 4칸을 빈 문자열로 채워 프로토콜 9칸 형식을 유지
+        List<String> choices = currentQuestion.getChoices();
+        String c1 = choices.size() > 0 ? choices.get(0) : "";
+        String c2 = choices.size() > 1 ? choices.get(1) : "";
+        String c3 = choices.size() > 2 ? choices.get(2) : "";
+        String c4 = choices.size() > 3 ? choices.get(3) : "";
+
+        // MessageType.QUESTION 규약: 번호;유형;난이도;제한 시간;보기1;보기2;보기3;보기4;문제(마지막)
+        Message questionMsg = Message.of(
+                MessageType.QUESTION,
+                String.valueOf(questionNumber),
+                currentQuestion.getType(),
+                currentQuestion.getDifficulty(),
+                String.valueOf(GameConfig.QUESTION_TIME_MS),
+                c1, c2, c3, c4,
+                currentQuestion.getPrompt()
+        );
+
+        broadcaster.broadcast(questionMsg);
+        questionTimer.start(GameConfig.QUESTION_TIME_MS, this::finishRound);
+    }
+
+    /**
+     * 지금 문제가 떠 있는지(라운드 진행 중인지) 반환한다.
+     * #14가 벨 입력을 받을지 판단할 때 호출한다.
+     */
+    public synchronized boolean isRoundActive() {
+        return roundActive;
+    }
+
+    /**
+     * 현재 라운드를 끝내고 정답을 공개(REVEAL)한 뒤 {@code GameConfig.NEXT_QUESTION_DELAY_MS}만큼 기다렸다 다음 문제로 넘어간다.
+     * <p>문제 시간이 끝났을 때 타이머가 호출하며, 정답이 나왔을 때(#16)와 {@code /skip} 명령 시(#25)에도 호출한다.
+     */
+    public synchronized void finishRound() {
+        if (!roundActive) {
+            return; // 타이머 만료와 정답 입력이 동시에 발생해도 한 번만 실행되도록 방어
+        }
+        this.roundActive = false;
+        questionTimer.stop();
+
+        String revealAnswer = formatRevealAnswer(currentQuestion);
+        broadcaster.broadcast(Message.of(MessageType.REVEAL, revealAnswer));
+
+        if (nextQuestionTask != null && !nextQuestionTask.isCancelled()) {
+            nextQuestionTask.cancel(false);
+        }
+        nextQuestionTask = roundScheduler.schedule(
+                this::startNextQuestion,
+                GameConfig.NEXT_QUESTION_DELAY_MS,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private String formatRevealAnswer(Question q) {
+        if ("4지선다".equals(q.getType())) {
+            // answers.get(0)은 "1"~"4" 번호이므로 보기 텍스트도 함께 표시
+            int idx = Integer.parseInt(q.getAnswers().get(0)) - 1;
+            return (idx + 1) + "번 (" + q.getChoices().get(idx) + ")";
+        }
+        return String.join(" / ", q.getAnswers());
+    }
+
+    /**
+     * 지금 공개된 힌트 수를 반환한다.
+     * M2에서는 항상 0을 돌려주고 #18에서 채운다. #14가 벨을 울린 순간 기록한다.
+     */
+    public synchronized int getRevealedHintCount() {
+        return 0;
+    }
+
+    /**
+     * 문제 타이머를 일시정지한다.
+     * <p>사용법: 라인 B가 답변 차례 동안 멈출 때(#21) 이 메서드만 호출한다.
+     */
+    public synchronized void pauseQuestionTimer() {
+        if (roundActive) {
+            questionTimer.pause();
+        }
+    }
+
+    /**
+     * 일시정지된 문제 타이머를 이어서 재개한다.
+     * <p>사용법: 답변 차례가 끝나 아무도 답하는 사람이 없을 때(#21) 이 메서드만 호출한다.
+     */
+    public synchronized void resumeQuestionTimer() {
+        if (roundActive) {
+            questionTimer.resume();
         }
     }
 
