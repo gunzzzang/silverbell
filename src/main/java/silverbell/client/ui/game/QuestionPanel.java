@@ -141,12 +141,12 @@ class QuestionPanel extends JPanel {
 
     /**
      * TURN|지금 차례인 사람;답변 시간
-     * 누가 답하는 동안 시간 바 멈춤(회색), 차례가 없어지면 다시 흐름
+     * 누가 답하는 동안 시간 바 멈춤(회색), 차례가 없어지면(빈 값) 다시 흐름
      */
     private void onTurn(Message message) {
         String[] values = message.values(2);
         String turnUser = values.length > 0 ? values[0].strip() : "";
-        boolean hasTurn = !turnUser.isEmpty() && !"NONE".equalsIgnoreCase(turnUser);
+        boolean hasTurn = !turnUser.isEmpty();
 
         if (hasTurn) {
             countdownTimer.stop();

@@ -108,6 +108,14 @@ public class GameRoom implements ConnectionListener {
                     players.get(0).setHost(true);
                 }
                 broadcastUsersList();
+            } else {
+                // 모두 나가면 게임 상태를 초기화해 빈 방에서 문제가 계속 돌지 않게 함
+                isGaming = false;
+                roundActive = false;
+                questionTimer.stop();
+                if (nextQuestionTask != null) {
+                    nextQuestionTask.cancel(false);
+                }
             }
         }
     }

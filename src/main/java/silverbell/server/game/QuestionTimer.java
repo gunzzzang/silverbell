@@ -39,17 +39,22 @@ public class QuestionTimer {
         this.task = scheduler.scheduleAtFixedRate(this::tick, TICK_MS, TICK_MS, TimeUnit.MILLISECONDS);
     }
 
-    private synchronized void tick() {
-        if (paused || task == null || task.isCancelled()) {
-            return;
-        }
-        remainingMs -= TICK_MS;
-        if (remainingMs <= 0) {
+    private void tick() {
+        Runnable timeout = null;
+        synchronized (this) {
+            if (paused || task == null || task.isCancelled()) {
+                return;
+            }
+            remainingMs -= TICK_MS;
+            if (remainingMs > 0) {
+                return;
+            }
             remainingMs = 0;
             stop();
-            if (onTimeout != null) {
-                onTimeout.run();
-            }
+            timeout = onTimeout;
+        }
+        if (timeout != null) {
+            timeout.run(); // 타이머 잠금을 놓은 뒤 호출 (GameRoom 잠금과 엇갈리지 않게)
         }
     }
 

@@ -135,4 +135,20 @@ class GameRoomRoundTest {
                     .orElseThrow(() -> new AssertionError(type + " 메시지가 전송되지 않았습니다."));
         }
     }
+
+    @Test
+    @DisplayName("게임 중 참가자가 모두 나가면 게임과 라운드가 종료되고 새 입장이 가능해진다")
+    void allPlayersLeaveResetsGameState() {
+        // given
+        room.startGame("방장");
+        assertTrue(room.isRoundActive());
+
+        // when
+        room.left("방장");
+        room.left("참가자");
+
+        // then
+        assertFalse(room.isRoundActive());
+        assertEquals(null, room.tryJoin("새유저")); // '게임 진행 중' 거절 없이 입장 승인
+    }
 }
