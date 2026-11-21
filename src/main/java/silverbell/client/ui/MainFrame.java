@@ -1,15 +1,10 @@
 package silverbell.client.ui;
 
 import java.awt.CardLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 
 import silverbell.client.net.MessageRouter;
@@ -64,7 +59,6 @@ public final class MainFrame extends JFrame {
         });
 
         setContentPane(root);
-        setJMenuBar(createDevMenu()); // 개발용 임시 메뉴. #11에서 실제 게임 시작과 연결하면 이 줄과 메서드를 지운다
         show(Screen.TITLE);
     }
 
@@ -72,6 +66,7 @@ public final class MainFrame extends JFrame {
     private void registerMessageHandlers() {
         router.on(MessageType.JOIN_OK, message -> {
             lobbyPanel.reset();
+            lobbyPanel.setMyNickname(titlePanel.getNickname());
             titlePanel.onJoinSuccess();
             show(Screen.LOBBY);
         });
@@ -81,6 +76,9 @@ public final class MainFrame extends JFrame {
         router.on(MessageType.USERS, lobbyPanel::updateUsers);
         router.on(MessageType.CHAT, lobbyPanel::appendChat);
         router.on(MessageType.SYSTEM, lobbyPanel::appendSystem);
+
+        // #11 임시 화면 전환: 첫 QUESTION이 오면 모든 참가자를 게임 화면으로 전환한다 (#19에서 COUNTDOWN으로 교체)
+        router.on(MessageType.QUESTION, message -> show(Screen.GAME));
 
         router.whenDisconnected(() -> {
             connection = null;
@@ -116,26 +114,5 @@ public final class MainFrame extends JFrame {
 
     private void addScreen(Screen screen, JPanel panel) {
         root.add(panel, screen.name());
-    }
-
-    /** 개발용: 서버 없이 화면을 오가는 메뉴. 게임 화면 틀(#7)을 보려고 둔다. #11에서 지운다. */
-    private JMenuBar createDevMenu() {
-        JMenu menu = new JMenu("개발용");
-        menu.add(createScreenItem("게임 화면 보기", Screen.GAME));
-        menu.add(createScreenItem("타이틀로", Screen.TITLE));
-        JMenuBar menuBar = new JMenuBar();
-        menuBar.add(menu);
-        return menuBar;
-    }
-
-    private JMenuItem createScreenItem(String text, Screen screen) {
-        JMenuItem item = new JMenuItem(text);
-        item.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                show(screen);
-            }
-        });
-        return item;
     }
 }
