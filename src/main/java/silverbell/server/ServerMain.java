@@ -1,15 +1,17 @@
 package silverbell.server;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 import silverbell.common.GameConfig;
-import silverbell.common.Message;
 import silverbell.common.MessageType;
 import silverbell.server.game.GameRoom;
+import silverbell.server.game.QuestionDeck;
+import silverbell.server.handler.ChatHandler;
 import silverbell.server.handler.MessageDispatcher;
+import silverbell.server.handler.StartHandler;
 import silverbell.server.net.ClientRegistry;
 import silverbell.server.net.SocketServer;
-import silverbell.server.handler.ChatHandler;
 
 /**
  * 서버 시작점. 객체를 한 번씩 만들어 서로 연결하고, 메시지 핸들러를 등록하고, 포트를 연다.
@@ -28,12 +30,12 @@ public final class ServerMain {
     public static void main(String[] args) {
         int port = parsePort(args);
         ClientRegistry registry = new ClientRegistry();
-        GameRoom gameRoom = new GameRoom(registry); // 1. 임시 로비 대신 실제 GameRoom 생성
+        QuestionDeck questionDeck = loadQuestionDeck();
+        GameRoom gameRoom = new GameRoom(registry, questionDeck);
         MessageDispatcher dispatcher = new MessageDispatcher();
-        registerHandlers(dispatcher, registry);
+        registerHandlers(dispatcher, registry, gameRoom);
 
         try {
-            // 2. temporaryLobby() 대신 gameRoom 전달
             new SocketServer(port, dispatcher, registry, gameRoom).start();
         } catch (IOException e) {
             System.err.println("[서버] 포트 " + port + "를 열 수 없어요. 서버가 이미 켜져 있는지 확인해 주세요. (" + e.getMessage() + ")");
@@ -41,12 +43,36 @@ public final class ServerMain {
         }
     }
 
-    /** 메시지 종류별 핸들러를 등록한다. 서버로 오면 안 되는 종류(SCORE 등)는 등록하지 않아 무시된다(N7). */
-    private static void registerHandlers(MessageDispatcher dispatcher, ClientRegistry registry) {
-        dispatcher.register(MessageType.CHAT, new ChatHandler(registry));
+    private static QuestionDeck loadQuestionDeck() {
+        QuestionDeck deck = new QuestionDeck();
+        try (InputStream in = openQuestionStream()) {
+            if (in == null) {
+                System.err.println("[서버] 문제 파일을 찾을 수 없어요: " + GameConfig.QUESTION_FILE
+                        + " (현재 작업 경로: " + java.nio.file.Path.of("").toAbsolutePath() + ")");
+                System.exit(1);
+            }
+            deck.loadQuestions(in);
+            System.out.println("[서버] 문제 " + deck.totalLoadedCount() + "개를 불러왔어요.");
+        } catch (IOException e) {
+            System.err.println("[서버] 문제 파일을 읽는 중 오류가 났어요: " + e.getMessage());
+            System.exit(1);
+        }
+        return deck;
     }
 
-    // 3. temporaryLobby() 메서드 및 안 쓰는 import(ConnectionListener, ServerLog) 삭제
+    private static InputStream openQuestionStream() throws IOException {
+        java.nio.file.Path filePath = java.nio.file.Path.of(GameConfig.QUESTION_FILE);
+        if (java.nio.file.Files.exists(filePath)) {
+            return java.nio.file.Files.newInputStream(filePath);
+        }
+        return ServerMain.class.getClassLoader().getResourceAsStream(GameConfig.QUESTION_FILE);
+    }
+
+    /** 메시지 종류별 핸들러를 등록한다. 서버로 오면 안 되는 종류(SCORE 등)는 등록하지 않아 무시된다(N7). */
+    private static void registerHandlers(MessageDispatcher dispatcher, ClientRegistry registry, GameRoom gameRoom) {
+        dispatcher.register(MessageType.CHAT, new ChatHandler(registry));
+        dispatcher.register(MessageType.START, new StartHandler(gameRoom));
+    }
 
     private static int parsePort(String[] args) {
         if (args.length == 0) {

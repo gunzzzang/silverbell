@@ -25,8 +25,11 @@ final class LobbyPanel extends JPanel {
     private final JTextArea chatArea = new JTextArea();
     private final JTextField chatInput = new JTextField();
     private final JButton sendButton = new JButton("전송");
+    /** #11 임시 게임 시작 버튼 (#19에서 준비 버튼·카운트다운으로 교체) */
+    private final JButton startButton = new JButton("게임 시작");
 
     private final Consumer<Message> messageSender;
+    private String myNickname;
 
     LobbyPanel(Consumer<Message> messageSender) {
         super(new BorderLayout(8, 8));
@@ -38,12 +41,18 @@ final class LobbyPanel extends JPanel {
     }
 
     private void initLayout() {
-        // 좌측: 참가자 목록
+        // 좌측: 참가자 목록 + 방장 임시 시작 버튼
         JList<String> userList = new JList<>(userListModel);
         JScrollPane userScroll = new JScrollPane(userList);
-        userScroll.setPreferredSize(new Dimension(220, 0));
         userScroll.setBorder(BorderFactory.createTitledBorder("참가자 목록"));
-        add(userScroll, BorderLayout.WEST);
+
+        startButton.setEnabled(false); // 방장(HOST)으로 확인되면 활성화
+
+        JPanel westPanel = new JPanel(new BorderLayout(0, 8));
+        westPanel.setPreferredSize(new Dimension(220, 0));
+        westPanel.add(userScroll, BorderLayout.CENTER);
+        westPanel.add(startButton, BorderLayout.SOUTH);
+        add(westPanel, BorderLayout.WEST);
 
         // 중앙: 채팅 영역
         chatArea.setEditable(false);
@@ -63,6 +72,14 @@ final class LobbyPanel extends JPanel {
     private void initEvents() {
         sendButton.addActionListener(e -> sendChat());
         chatInput.addActionListener(e -> sendChat());
+        startButton.addActionListener(e -> {
+            startButton.setEnabled(false); // 중복 클릭 방지
+            messageSender.accept(Message.of(MessageType.START));
+        });
+    }
+
+    void setMyNickname(String nickname) {
+        this.myNickname = nickname;
     }
 
     private void sendChat() {
@@ -75,21 +92,27 @@ final class LobbyPanel extends JPanel {
         chatInput.requestFocusInWindow();
     }
 
-    /** USERS 메시지 수신 시 참가자 목록을 갱신한다. */
+    /** USERS 메시지 수신 시 참가자 목록과 방장 시작 버튼 상태를 갱신한다. */
     void updateUsers(Message message) {
         userListModel.clear();
         String body = message.body();
         if (body.isEmpty()) {
+            startButton.setEnabled(false);
             return;
         }
+        boolean amIHost = false;
         for (String token : message.values(0)) {
             String[] parts = token.split(":");
             if (parts.length >= 2) {
                 String nickname = parts[0];
                 boolean isHost = "HOST".equals(parts[1]);
                 userListModel.addElement(isHost ? "[방장] " + nickname : nickname);
+                if (isHost && nickname.equals(myNickname)) {
+                    amIHost = true;
+                }
             }
         }
+        startButton.setEnabled(amIHost);
     }
 
     /** CHAT 메시지 수신 시 채팅창에 추가한다. */
@@ -109,6 +132,7 @@ final class LobbyPanel extends JPanel {
         userListModel.clear();
         chatArea.setText("");
         chatInput.setText("");
+        startButton.setEnabled(false);
     }
 
     private void appendLine(String line) {
