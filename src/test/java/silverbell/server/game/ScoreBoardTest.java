@@ -1,14 +1,13 @@
 package silverbell.server.game;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class ScoreBoardTest {
 
@@ -76,5 +75,19 @@ class ScoreBoardTest {
                 new String[]{"User1:1", "User3:-1"},
                 scoreBoard.toScoreTokens()
         );
+    }
+
+    @Test
+    @DisplayName("나간 사람에게 감점하거나 정답 처리해도 점수판에 다시 생기지 않는다")
+    void ignoreScoreChangeForRemovedOrUnknownPlayer() {
+        scoreBoard.removePlayer("User1");
+
+        // 나간 사람에게 늦은 시간 초과 감점이나 정답 처리가 들어와도 0을 반환하고 다시 등록되지 않음
+        assertEquals(0, scoreBoard.applyPenalty("User1"));
+        assertEquals(0, scoreBoard.addCorrectScore("User1", "3", 0));
+
+        List<Map.Entry<String, Integer>> ranked  = scoreBoard.getRankedScores();
+        assertEquals(2, ranked.size());
+        assertFalse(ranked.stream().anyMatch(e -> e.getKey().equals("User1")));
     }
 }

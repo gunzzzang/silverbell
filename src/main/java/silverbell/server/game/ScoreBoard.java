@@ -33,9 +33,12 @@ public class ScoreBoard {
      * @param nickname        정답자 닉네임
      * @param difficulty      문제 난이도 ("1", "2", "3" 등 정수 문자열)
      * @param hintCountAtBuzz 벨을 울린 순간까지 공개된 힌트 수 (#14가 기록해 #16이 전달)
-     * @return 이번 정답으로 얻은 점수
+     * @return 이번 정답으로 얻은 점수 (점수판에 없는 닉네임이면 0)
      */
     public synchronized int addCorrectScore(String nickname, String difficulty, int hintCountAtBuzz) {
+        if (nickname == null || !scores.containsKey(nickname)) {
+            return 0; // 이미 나간 사람
+        }
         int baseScore = parseDifficultyScore(difficulty);
         int earned = Math.max(GameConfig.MIN_CORRECT_SCORE, baseScore - Math.max(0, hintCountAtBuzz));
         scores.merge(nickname, earned, Integer::sum);
@@ -47,9 +50,12 @@ public class ScoreBoard {
      * 규칙: {@link GameConfig#WRONG_PENALTY}만큼 감점, 음수 허용.
      *
      * @param nickname 감점 대상 닉네임
-     * @return 변동된 점수 (음수, 예: -1)
+     * @return 변동된 점수 (음수, 예: -1 / 점수판에 없는 닉네임이면 0)
      */
     public synchronized int applyPenalty(String nickname) {
+        if (nickname == null || !scores.containsKey(nickname)) {
+            return 0; // 이미 나간 사람
+        }
         int delta = -GameConfig.WRONG_PENALTY;
         scores.merge(nickname, delta, Integer::sum);
         return delta;
