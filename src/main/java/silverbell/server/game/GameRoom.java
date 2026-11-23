@@ -32,6 +32,8 @@ public class GameRoom implements ConnectionListener {
     private final Broadcaster broadcaster;
     private final QuestionDeck questionDeck;
     private final QuestionTimer questionTimer;
+    /** 이번 문제에 벨을 울린 순서 (#14). 새 문제마다 비운다 */
+    private final BellQueue bellQueue = new BellQueue();
     private final ScheduledExecutorService roundScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "round-scheduler");
         t.setDaemon(true);
@@ -153,6 +155,7 @@ public class GameRoom implements ConnectionListener {
         this.currentQuestion = questionDeck.drawNext();
         this.questionNumber++;
         this.roundActive = true;
+        bellQueue.reset(); // 새 문제마다 벨 줄·틀린 사람·힌트 기록을 비운다 (#14)
 
         // 단답형은 choices가 비어 있으므로 4칸을 빈 문자열로 채워 프로토콜 9칸 형식을 유지
         List<String> choices = currentQuestion.getChoices();
@@ -182,6 +185,36 @@ public class GameRoom implements ConnectionListener {
      */
     public synchronized boolean isRoundActive() {
         return roundActive;
+    }
+
+    /**
+     * 벨을 울린다 (#14, D1 벨 누르기·D2 벨 대기열·D3 순서 표시). {@code BUZZ} 핸들러가 부른다.
+     *
+     * <p>문제가 떠 있을 때만 받는다. 줄에 들어가면 모두에게 알림과 줄 순서({@code QUEUE})를 보내고,
+     * 줄 맨 앞이 됐으면 지금 차례({@code TURN})도 보낸다. 벨을 울린 순간의 힌트 수도 같이 기록한다(F1).
+     * 문제가 없을 때, 이미 줄에 있을 때, 이번 문제에서 틀렸을 때는 무시한다(N7).
+     *
+     * <pre>
+     * 주성 벨 → SYSTEM|주성 님이 벨을 울렸어요!  QUEUE|주성       TURN|주성;10000
+     * 이건 벨 → SYSTEM|이건 님이 벨을 울렸어요!  QUEUE|주성;이건  (차례는 그대로 주성)
+     * </pre>
+     *
+     * <p>이 객체를 잠근 채 보낸다. 잠금 밖에서 보내면 그사이 {@link #finishRound()}가 끼어들어
+     * {@code REVEAL} 뒤에 {@code QUEUE}·{@code TURN}이 도착할 수 있다.
+     */
+    public synchronized void buzz(String nickname) {
+        if (!roundActive) {
+            return;
+        }
+        if (!bellQueue.add(nickname, getRevealedHintCount())) {
+            return;
+        }
+        broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + " 님이 벨을 울렸어요!"));
+        List<String> order = bellQueue.order();
+        broadcaster.broadcast(Message.of(MessageType.QUEUE, order.toArray(new String[0])));
+        if (order.size() == 1) { // 빈 줄에 처음 들어왔으면 이 사람이 지금 차례
+            broadcaster.broadcast(Message.of(MessageType.TURN, nickname, String.valueOf(GameConfig.ANSWER_TIME_MS)));
+        }
     }
 
     /**
