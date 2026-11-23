@@ -8,6 +8,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 import silverbell.client.net.MessageRouter;
+import silverbell.client.net.MessageSender;
 import silverbell.client.net.ServerConnection;
 import silverbell.client.ui.game.GameScreen;
 import silverbell.common.Message;
@@ -32,8 +33,15 @@ public final class MainFrame extends JFrame {
     private final MessageRouter router = new MessageRouter();
     private final TitlePanel titlePanel;
     private final LobbyPanel lobbyPanel;
-    private final GameScreen gameScreen = new GameScreen(router);
+    private final GameScreen gameScreen = new GameScreen(router, new MessageSender() {
+        @Override
+        public void send(Message message) { // 게임 화면은 연결을 모르고 이걸로만 보낸다 (#14)
+            sendMessage(message);
+        }
+    });
     private ServerConnection connection;
+    /** 지금 보이는 화면 */
+    private Screen currentScreen;
 
     public MainFrame() {
         super("실버벨");
@@ -67,6 +75,7 @@ public final class MainFrame extends JFrame {
         router.on(MessageType.JOIN_OK, message -> {
             lobbyPanel.reset();
             lobbyPanel.setMyNickname(titlePanel.getNickname());
+            gameScreen.setMyNickname(titlePanel.getNickname());
             titlePanel.onJoinSuccess();
             show(Screen.LOBBY);
         });
@@ -104,8 +113,12 @@ public final class MainFrame extends JFrame {
         }
     }
 
-    /** 보여줄 화면을 바꾼다. EDT에서 불러야 한다. */
+    /** 보여줄 화면을 바꾼다. EDT에서 불러야 한다. 이미 그 화면이면 아무 일도 하지 않는다. */
     public void show(Screen screen) {
+        if (screen == currentScreen) {
+            return; // 문제마다 show(GAME)이 불려도, 채팅 치는 중인 입력칸의 포커스를 뺏지 않게 (#14)
+        }
+        currentScreen = screen;
         cards.show(root, screen.name());
         if (screen == Screen.GAME) {
             gameScreen.takeKeyFocus(); // 스페이스바·Enter를 게임 화면이 바로 받게

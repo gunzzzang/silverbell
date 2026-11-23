@@ -11,6 +11,7 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 import silverbell.client.net.MessageRouter;
+import silverbell.client.net.MessageSender;
 
 /**
  * 게임 화면(UI 명세서 S4~S9). 영역 패널을 만들어 <b>배치만</b> 하고, 내용은 각 영역 클래스가 맡는다.
@@ -52,19 +53,24 @@ public final class GameScreen extends JPanel {
     private static final int INNER_GAP = 8;
 
     private final QuestionPanel questionPanel = new QuestionPanel();
-    private final BellPanel bellPanel = new BellPanel();
+    private final BellPanel bellPanel;
     private final AnswerPanel answerPanel = new AnswerPanel();
     private final QueuePanel queuePanel = new QueuePanel();
     private final ScorePanel scorePanel = new ScorePanel();
-    private final ChatPanel chatPanel = new ChatPanel();
+    private final ChatPanel chatPanel;
 
     /**
      * 영역을 배치하고, 각 영역이 받을 메시지를 {@code router}에 등록하게 한다.
      * {@code ServerConnection.connect} 전에 만들어야 처음 오는 메시지를 놓치지 않는다.
+     *
+     * @param sender 벨·채팅처럼 서버로 보내는 영역이 쓴다 (#14)
      */
-    public GameScreen(MessageRouter router) {
+    public GameScreen(MessageRouter router, MessageSender sender) {
         super(new BorderLayout(INNER_GAP, INNER_GAP));
         setBorder(BorderFactory.createEmptyBorder(OUTER_GAP, OUTER_GAP, OUTER_GAP, OUTER_GAP));
+
+        bellPanel = new BellPanel(sender);
+        chatPanel = new ChatPanel(sender, this); // 입력칸을 닫을 때 이 화면에 키 입력을 돌려준다
 
         questionPanel.setPreferredSize(new Dimension(0, QUESTION_HEIGHT));
         answerPanel.setPreferredSize(new Dimension(0, ANSWER_HEIGHT));
@@ -93,6 +99,7 @@ public final class GameScreen extends JPanel {
         chatPanel.register(router);
 
         setFocusable(true); // 패널이 키 입력을 받을 수 있게
+        enableInputMethods(false); // 한글 입력기가 켜져 있어도 스페이스바·Enter·숫자키가 조합에 먹히지 않고 바로 오게 (채팅 입력칸은 그대로 한글 입력)
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) { // 채팅 입력칸이 닫혀 있을 때만 여기로 온다
@@ -120,6 +127,15 @@ public final class GameScreen extends JPanel {
                 }
             }
         });
+    }
+
+    /**
+     * 내 닉네임을 영역들에 알려준다. 「내 차례!」·「내 순서」·「(나)」를 고를 때 쓴다. 입장할 때({@code JOIN_OK}) 부른다.
+     */
+    public void setMyNickname(String nickname) {
+        bellPanel.setMyNickname(nickname);
+        queuePanel.setMyNickname(nickname);
+        answerPanel.setMyNickname(nickname);
     }
 
     /**
