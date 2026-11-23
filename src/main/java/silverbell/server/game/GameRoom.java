@@ -32,6 +32,7 @@ public class GameRoom implements ConnectionListener {
     private final Broadcaster broadcaster;
     private final QuestionDeck questionDeck;
     private final QuestionTimer questionTimer;
+    private final ScoreBoard scoreBoard = new ScoreBoard();
     /** 이번 문제에 벨을 울린 순서 (#14). 새 문제마다 비운다 */
     private final BellQueue bellQueue = new BellQueue();
     private final ScheduledExecutorService roundScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -92,7 +93,9 @@ public class GameRoom implements ConnectionListener {
      */
     @Override
     public synchronized void joined(String nickname) {
+        scoreBoard.addPlayer(nickname);
         broadcastUsersList();
+        broadcastScoreBoard();
         broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + "님이 입장했습니다."));
     }
 
@@ -103,6 +106,7 @@ public class GameRoom implements ConnectionListener {
     public synchronized void left(String nickname) {
         boolean removed = players.removeIf(p -> p.getNickname().equals(nickname));
         if (removed) {
+            scoreBoard.removePlayer(nickname);
             broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + "님이 퇴장했습니다."));
             if (!players.isEmpty()) {
                 // 방장이 나갔다면 남은 첫 번째 유저에게 방장 위임
@@ -110,6 +114,7 @@ public class GameRoom implements ConnectionListener {
                     players.get(0).setHost(true);
                 }
                 broadcastUsersList();
+                broadcastScoreBoard();
             } else {
                 // 모두 나가면 게임 상태를 초기화해 빈 방에서 문제가 계속 돌지 않게 함
                 isGaming = false;
@@ -316,6 +321,26 @@ public class GameRoom implements ConnectionListener {
 
         Message usersMessage = Message.of(MessageType.USERS, userTokens);
         broadcaster.broadcast(usersMessage);
+    }
+
+    /**
+     * 현재 점수판을 높은 점수 순으로 모든 참가자에게 전송한다 (F1, F2).
+     * #16(정답·오답 처리)이나 #22(퇴장 처리)에서 ScoreBoard를 갱신한 뒤 호출한다.
+     */
+    public synchronized void broadcastScoreBoard() {
+        String[] tokens = scoreBoard.toScoreTokens();
+        if (tokens.length == 0) {
+            return;
+        }
+        broadcaster.broadcast(Message.of(MessageType.SCORE, tokens));
+    }
+
+    public ScoreBoard getScoreBoard() {
+        return scoreBoard;
+    }
+
+    public synchronized Question getCurrentQuestion() {
+        return currentQuestion;
     }
 
     // 리스트와 내부 Player 객체 모두 값만 복사해 반환 (외부 상태 변조 및 동시성 오류 방지)

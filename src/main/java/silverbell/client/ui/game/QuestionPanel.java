@@ -42,6 +42,7 @@ class QuestionPanel extends JPanel {
     private Timer countdownTimer;
     private int totalMs;
     private int remainingMs;
+    private long deadlineMs;
 
     QuestionPanel() {
         super(new BorderLayout(8, 8));
@@ -94,7 +95,7 @@ class QuestionPanel extends JPanel {
 
     private void initTimer() {
         countdownTimer = new Timer(TIMER_TICK_MS, e -> {
-            remainingMs -= TIMER_TICK_MS;
+            remainingMs = (int) (deadlineMs - System.currentTimeMillis());
             if (remainingMs <= 0) {
                 remainingMs = 0;
                 countdownTimer.stop();
@@ -123,6 +124,8 @@ class QuestionPanel extends JPanel {
 
         this.totalMs = limitMs;
         this.remainingMs = limitMs;
+        this.deadlineMs = System.currentTimeMillis() + limitMs;
+        timeBar.setMinimum(0);
         timeBar.setMaximum(totalMs);
         timeBar.setValue(totalMs);
         timeBar.setForeground(ACTIVE_BAR_COLOR);
@@ -136,6 +139,8 @@ class QuestionPanel extends JPanel {
      */
     private void onReveal(Message message) {
         countdownTimer.stop();
+        remainingMs = 0;
+        refreshTimerView();
         revealLabel.setText("정답: " + message.body());
     }
 
@@ -149,11 +154,16 @@ class QuestionPanel extends JPanel {
         boolean hasTurn = !turnUser.isEmpty();
 
         if (hasTurn) {
-            countdownTimer.stop();
+            if (countdownTimer.isRunning()) {
+                remainingMs = (int) Math.max(0, deadlineMs - System.currentTimeMillis());
+                countdownTimer.stop();
+            }
             timeBar.setForeground(PAUSED_BAR_COLOR);
+            refreshTimerView();
         } else {
             timeBar.setForeground(ACTIVE_BAR_COLOR);
             if (remainingMs > 0) {
+                deadlineMs = System.currentTimeMillis() + remainingMs;
                 countdownTimer.start();
             }
         }
@@ -162,5 +172,9 @@ class QuestionPanel extends JPanel {
     private void refreshTimerView() {
         timeBar.setValue(remainingMs);
         timeTextLabel.setText(String.format("%.1f초", remainingMs / 1000.0));
+        if (remainingMs <= 0) {
+            // Windows Look & Feel에서 value=0일 때 남는 1~2px 파란 잔상 제거
+            timeBar.setForeground(timeBar.getBackground());
+        }
     }
 }
