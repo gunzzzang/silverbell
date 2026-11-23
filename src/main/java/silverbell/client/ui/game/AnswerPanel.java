@@ -29,6 +29,7 @@ class AnswerPanel extends JPanel {
 
     /** UI 명세서 5절: 내 차례 강조는 노란색 */
     private static final Color MY_TURN_COLOR = new Color(255, 236, 140);
+    private static final float TURN_FONT_SIZE = 16f;
 
     private final JLabel lblTurn = new JLabel(" ", SwingConstants.CENTER);
     private final Color normalColor;
@@ -39,7 +40,7 @@ class AnswerPanel extends JPanel {
         setBorder(BorderFactory.createTitledBorder("답 입력 (라인 B)"));
         normalColor = getBackground();
 
-        lblTurn.setFont(lblTurn.getFont().deriveFont(Font.BOLD, 16f));
+        lblTurn.setFont(lblTurn.getFont().deriveFont(Font.BOLD, TURN_FONT_SIZE));
         add(lblTurn, BorderLayout.NORTH);
         add(new JLabel("답 입력 · 내 차례에만 켜짐", SwingConstants.CENTER), BorderLayout.CENTER);
     }
