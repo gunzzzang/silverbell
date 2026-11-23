@@ -23,7 +23,7 @@ import java.util.Objects;
  * reset()                 줄·틀린 사람·힌트 기록 모두 비움, 다음 문제에서 다시 울릴 수 있음
  * </pre>
  *
- * <p>사람은 닉네임으로 구분한다. 소켓을 모르고, 메시지도 보내지 않는다(#14에서 {@code BUZZ} 핸들러가 이 클래스를 쓴다).
+ * <p>사람은 닉네임으로 구분한다. 소켓을 모르고, 메시지도 보내지 않는다. 메시지는 이 줄을 가진 {@code GameRoom.buzz()}가 보낸다(#14).
  *
  * <p>여러 {@code ClientHandler} 스레드가 동시에 부르므로 공개 메서드를 모두 {@code synchronized}로 한다(N1 벨 순서 공정성).
  * 필드는 밖에 내주지 않고, 줄은 {@link #order()}로 복사본만 준다.
@@ -59,11 +59,7 @@ public class BellQueue {
      * 이번 라운드에 벨을 울리지 않은 사람이면 0.
      */
     public synchronized int hintCountOf(String nickname) {
-        Integer count = hintCounts.get(nickname);
-        if (count == null) {
-            return 0;
-        }
-        return count;
+        return hintCounts.getOrDefault(nickname, 0);
     }
 
     /** 지금 답변 차례인 사람(줄 맨 앞). 줄이 비어 있으면 {@code null}. */
