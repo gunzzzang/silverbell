@@ -99,6 +99,7 @@ public final class GameScreen extends JPanel {
         chatPanel.register(router);
 
         setFocusable(true); // 패널이 키 입력을 받을 수 있게
+        enableInputMethods(false); // 한글 입력기가 켜져 있어도 스페이스바·Enter·숫자키가 조합에 먹히지 않고 바로 오게 (채팅 입력칸은 그대로 한글 입력)
         addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) { // 채팅 입력칸이 닫혀 있을 때만 여기로 온다
