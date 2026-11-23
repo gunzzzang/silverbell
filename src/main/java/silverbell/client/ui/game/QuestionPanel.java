@@ -154,8 +154,10 @@ class QuestionPanel extends JPanel {
         boolean hasTurn = !turnUser.isEmpty();
 
         if (hasTurn) {
-            remainingMs = (int) Math.max(0, deadlineMs - System.currentTimeMillis());
-            countdownTimer.stop();
+            if (countdownTimer.isRunning()) {
+                remainingMs = (int) Math.max(0, deadlineMs - System.currentTimeMillis());
+                countdownTimer.stop();
+            }
             timeBar.setForeground(PAUSED_BAR_COLOR);
             refreshTimerView();
         } else {
