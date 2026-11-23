@@ -167,7 +167,7 @@ CONTRIBUTING의 테스트 규칙(이름 "~하면 ~된다", `// given`·`// when`
 | 기술 | 어디 | 왜 필요한지 |
 | --- | --- | --- |
 | `enum` + `EnumMap` | `MessageType`, `MessageDispatcher` | 메시지 종류를 문자열 오타 없이 다루고, 큰 `switch` 대신 핸들러 등록(OCP) |
-| `interface`로 의존 끊기 | `Broadcaster`, `MessageListener`, `MessageHandler`, `AnswerChecker` | `game`이 소켓을, `net`이 화면을 모르게(DIP), 소켓 없이 JUnit 테스트 |
+| `interface`로 의존 끊기 | `Broadcaster`, `MessageListener`, `MessageSender`, `MessageHandler`, `AnswerChecker` | `game`이 소켓을, `net`이 화면을 모르게(DIP), 소켓 없이 JUnit 테스트 |
 | `Objects.requireNonNull`, `final class` 불변 객체 | `Message` | 여러 스레드가 같이 써도 안전 |
 | `instanceof` 패턴 (Java 16) | `Message.equals` | 짧게 쓰려고. 다른 데서는 안 늘림 |
 | `CardLayout` | `MainFrame` | 화면마다 창을 새로 띄우지 않고 한 창에서 전환 |

@@ -8,6 +8,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 import silverbell.client.net.MessageRouter;
+import silverbell.client.net.MessageSender;
 import silverbell.client.net.ServerConnection;
 import silverbell.client.ui.game.GameScreen;
 import silverbell.common.Message;
@@ -32,7 +33,12 @@ public final class MainFrame extends JFrame {
     private final MessageRouter router = new MessageRouter();
     private final TitlePanel titlePanel;
     private final LobbyPanel lobbyPanel;
-    private final GameScreen gameScreen = new GameScreen(router);
+    private final GameScreen gameScreen = new GameScreen(router, new MessageSender() {
+        @Override
+        public void send(Message message) { // 게임 화면은 연결을 모르고 이걸로만 보낸다 (#14)
+            sendMessage(message);
+        }
+    });
     private ServerConnection connection;
 
     public MainFrame() {
@@ -67,6 +73,7 @@ public final class MainFrame extends JFrame {
         router.on(MessageType.JOIN_OK, message -> {
             lobbyPanel.reset();
             lobbyPanel.setMyNickname(titlePanel.getNickname());
+            gameScreen.setMyNickname(titlePanel.getNickname());
             titlePanel.onJoinSuccess();
             show(Screen.LOBBY);
         });
