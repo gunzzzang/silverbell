@@ -54,7 +54,7 @@ public final class GameScreen extends JPanel {
 
     private final QuestionPanel questionPanel = new QuestionPanel();
     private final BellPanel bellPanel;
-    private final AnswerPanel answerPanel = new AnswerPanel();
+    private final AnswerPanel answerPanel;
     private final QueuePanel queuePanel = new QueuePanel();
     private final ScorePanel scorePanel = new ScorePanel();
     private final ChatPanel chatPanel;
@@ -63,7 +63,7 @@ public final class GameScreen extends JPanel {
      * 영역을 배치하고, 각 영역이 받을 메시지를 {@code router}에 등록하게 한다.
      * {@code ServerConnection.connect} 전에 만들어야 처음 오는 메시지를 놓치지 않는다.
      *
-     * @param sender 벨·채팅처럼 서버로 보내는 영역이 쓴다 (#14)
+     * @param sender 벨·채팅·답 입력처럼 서버로 보내는 영역이 쓴다 (#14·#16)
      */
     public GameScreen(MessageRouter router, MessageSender sender) {
         super(new BorderLayout(INNER_GAP, INNER_GAP));
@@ -71,6 +71,7 @@ public final class GameScreen extends JPanel {
 
         bellPanel = new BellPanel(sender);
         chatPanel = new ChatPanel(sender, this); // 입력칸을 닫을 때 이 화면에 키 입력을 돌려준다
+        answerPanel = new AnswerPanel(sender, this); // 답 입력칸이 꺼질 때 이 화면에 키 입력을 돌려준다
 
         questionPanel.setPreferredSize(new Dimension(0, QUESTION_HEIGHT));
         answerPanel.setPreferredSize(new Dimension(0, ANSWER_HEIGHT));
