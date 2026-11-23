@@ -1,7 +1,9 @@
 package silverbell.server.game;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -12,15 +14,16 @@ import java.util.Objects;
  * 라운드가 끝나면(정답·시간 끝·문제 넘기기) {@link #reset()}으로 비운다.
  *
  * <pre>
- * add("주성") → true   줄: [주성]        지금 차례: 주성
- * add("이건") → true   줄: [주성, 이건]
- * add("주성") → false  이미 줄에 있음 (연타)
- * next()      → "이건"  주성은 틀린 사람으로 기록, 줄: [이건]
- * add("주성") → false  이번 라운드에 틀림
- * reset()              줄·틀린 사람 모두 비움, 다음 문제에서 다시 울릴 수 있음
+ * add("주성", 0) → true   줄: [주성]        지금 차례: 주성
+ * add("이건", 1) → true   줄: [주성, 이건]   이건은 힌트 1개가 나온 뒤에 울림
+ * add("주성", 1) → false  이미 줄에 있음 (연타)
+ * next()         → "이건"  주성은 틀린 사람으로 기록, 줄: [이건]
+ * add("주성", 1) → false  이번 라운드에 틀림
+ * hintCountOf("이건") → 1  정답이면 이 값으로 점수를 계산한다(#16 → #12)
+ * reset()                 줄·틀린 사람·힌트 기록 모두 비움, 다음 문제에서 다시 울릴 수 있음
  * </pre>
  *
- * <p>사람은 닉네임으로 구분한다. 소켓을 모르고, 메시지도 보내지 않는다(#14에서 {@code BUZZ} 핸들러가 이 클래스를 쓴다).
+ * <p>사람은 닉네임으로 구분한다. 소켓을 모르고, 메시지도 보내지 않는다. 메시지는 이 줄을 가진 {@code GameRoom.buzz()}가 보낸다(#14).
  *
  * <p>여러 {@code ClientHandler} 스레드가 동시에 부르므로 공개 메서드를 모두 {@code synchronized}로 한다(N1 벨 순서 공정성).
  * 필드는 밖에 내주지 않고, 줄은 {@link #order()}로 복사본만 준다.
@@ -31,19 +34,32 @@ public class BellQueue {
     private final List<String> line = new ArrayList<>();
     /** 이번 라운드에 틀린 사람 */
     private final List<String> wrong = new ArrayList<>();
+    /** 사람마다 벨을 울린 순간 공개돼 있던 초성 힌트 수 (F1 점수 갱신: 벨을 울린 순간 기준) */
+    private final Map<String, Integer> hintCounts = new HashMap<>();
 
     /**
-     * 벨을 울린 사람을 줄 맨 뒤에 넣는다. 이미 줄에 있거나 이번 라운드에 틀린 사람이면 무시한다.
+     * 벨을 울린 사람을 줄 맨 뒤에 넣고, 그 순간 공개돼 있던 힌트 수를 같이 기록한다.
+     * 이미 줄에 있거나 이번 라운드에 틀린 사람이면 무시한다.
      *
+     * @param hintCount 벨을 울린 순간 공개돼 있던 초성 힌트 수 ({@code GameRoom.getRevealedHintCount()})
      * @return 줄에 들어갔으면 {@code true}, 무시했으면 {@code false}
      */
-    public synchronized boolean add(String nickname) { // 확인과 넣기를 한 스레드씩: 동시에 눌러도 섞이거나 두 번 들어가지 않음
+    public synchronized boolean add(String nickname, int hintCount) { // 확인과 넣기를 한 스레드씩: 동시에 눌러도 섞이거나 두 번 들어가지 않음
         Objects.requireNonNull(nickname, "nickname");
         if (line.contains(nickname) || wrong.contains(nickname)) {
             return false;
         }
         line.add(nickname);
+        hintCounts.put(nickname, hintCount);
         return true;
+    }
+
+    /**
+     * 그 사람이 벨을 울린 순간 공개돼 있던 힌트 수. 정답 처리(#16)가 점수 계산(#12)에 넘긴다.
+     * 이번 라운드에 벨을 울리지 않은 사람이면 0.
+     */
+    public synchronized int hintCountOf(String nickname) {
+        return hintCounts.getOrDefault(nickname, 0);
     }
 
     /** 지금 답변 차례인 사람(줄 맨 앞). 줄이 비어 있으면 {@code null}. */
@@ -69,10 +85,11 @@ public class BellQueue {
         return current();
     }
 
-    /** 라운드를 새로 시작할 때 줄과 틀린 사람 기록을 모두 비운다. */
+    /** 라운드를 새로 시작할 때 줄·틀린 사람·힌트 기록을 모두 비운다. */
     public synchronized void reset() {
         line.clear();
         wrong.clear();
+        hintCounts.clear();
     }
 
     /** 줄에 선 사람 수. */
