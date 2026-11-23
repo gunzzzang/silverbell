@@ -48,7 +48,7 @@ class GameRoomBuzzTest {
     }
 
     @Test
-    @DisplayName("문제 중 첫 벨이면 벨 알림·줄 순서·지금 차례를 보낸다")
+    @DisplayName("문제 중에 처음 벨을 울리면 벨 알림·줄 순서·지금 차례를 보낸다")
     void firstBuzzSendsQueueAndTurn() {
         // given
         startQuestion();
@@ -65,7 +65,7 @@ class GameRoomBuzzTest {
     }
 
     @Test
-    @DisplayName("두 번째 벨은 줄 순서만 다시 보내고 차례는 그대로다")
+    @DisplayName("두 번째 사람이 벨을 울리면 벨 알림과 줄 순서만 보내고 차례는 그대로다")
     void secondBuzzSendsQueueOnly() {
         // given
         startQuestion();

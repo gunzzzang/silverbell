@@ -174,7 +174,7 @@ class BellQueueTest {
     }
 
     @Test
-    @DisplayName("벨을 울린 순간의 힌트 수를 사람마다 기록한다")
+    @DisplayName("벨을 울리면 그 순간의 힌트 수가 사람마다 기록된다")
     void recordHintCountWhenBuzzed() {
         // given
         BellQueue queue = new BellQueue();
@@ -203,7 +203,7 @@ class BellQueueTest {
     }
 
     @Test
-    @DisplayName("벨을 울리지 않은 사람의 힌트 수는 0이다")
+    @DisplayName("벨을 울리지 않은 사람의 힌트 수를 물으면 0이 나온다")
     void hintCountOfNotBuzzedIsZero() {
         // given
         BellQueue queue = new BellQueue();
