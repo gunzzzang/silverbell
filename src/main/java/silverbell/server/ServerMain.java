@@ -7,6 +7,7 @@ import silverbell.common.GameConfig;
 import silverbell.common.MessageType;
 import silverbell.server.game.GameRoom;
 import silverbell.server.game.QuestionDeck;
+import silverbell.server.handler.BuzzHandler;
 import silverbell.server.handler.ChatHandler;
 import silverbell.server.handler.MessageDispatcher;
 import silverbell.server.handler.StartHandler;
@@ -72,6 +73,7 @@ public final class ServerMain {
     private static void registerHandlers(MessageDispatcher dispatcher, ClientRegistry registry, GameRoom gameRoom) {
         dispatcher.register(MessageType.CHAT, new ChatHandler(registry));
         dispatcher.register(MessageType.START, new StartHandler(gameRoom));
+        dispatcher.register(MessageType.BUZZ, new BuzzHandler(gameRoom));
     }
 
     private static int parsePort(String[] args) {
