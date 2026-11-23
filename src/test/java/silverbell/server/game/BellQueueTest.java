@@ -26,9 +26,9 @@ class BellQueueTest {
         BellQueue queue = new BellQueue();
 
         // when
-        queue.add("주성");
-        queue.add("이건");
-        queue.add("민수");
+        queue.add("주성", 0);
+        queue.add("이건", 0);
+        queue.add("민수", 0);
 
         // then
         assertEquals(List.of("주성", "이건", "민수"), queue.order());
@@ -53,8 +53,8 @@ class BellQueueTest {
         BellQueue queue = new BellQueue();
 
         // when
-        boolean first = queue.add("이건");
-        boolean second = queue.add("이건");
+        boolean first = queue.add("이건", 0);
+        boolean second = queue.add("이건", 0);
 
         // then
         assertTrue(first);
@@ -67,8 +67,8 @@ class BellQueueTest {
     void passToNext() {
         // given
         BellQueue queue = new BellQueue();
-        queue.add("주성");
-        queue.add("이건");
+        queue.add("주성", 0);
+        queue.add("이건", 0);
 
         // when
         String next = queue.next();
@@ -84,7 +84,7 @@ class BellQueueTest {
     void passLast() {
         // given
         BellQueue queue = new BellQueue();
-        queue.add("주성");
+        queue.add("주성", 0);
 
         // when
         String next = queue.next();
@@ -114,12 +114,12 @@ class BellQueueTest {
     void wrongPlayerCannotBuzzAgain() {
         // given
         BellQueue queue = new BellQueue();
-        queue.add("주성");
-        queue.add("이건");
+        queue.add("주성", 0);
+        queue.add("이건", 0);
         queue.next(); // 주성 오답
 
         // when
-        boolean added = queue.add("주성");
+        boolean added = queue.add("주성", 0);
 
         // then
         assertFalse(added);
@@ -131,11 +131,11 @@ class BellQueueTest {
     void othersCanBuzzAfterLineEmpties() {
         // given
         BellQueue queue = new BellQueue();
-        queue.add("주성");
+        queue.add("주성", 0);
         queue.next(); // 주성 오답, 줄이 빔
 
         // when
-        boolean added = queue.add("민수");
+        boolean added = queue.add("민수", 0);
 
         // then
         assertTrue(added);
@@ -147,8 +147,8 @@ class BellQueueTest {
     void resetRound() {
         // given
         BellQueue queue = new BellQueue();
-        queue.add("주성");
-        queue.add("이건");
+        queue.add("주성", 0);
+        queue.add("이건", 0);
         queue.next(); // 주성 오답
 
         // when
@@ -157,7 +157,7 @@ class BellQueueTest {
         // then
         assertEquals(0, queue.size());
         assertNull(queue.current());
-        assertTrue(queue.add("주성"));
+        assertTrue(queue.add("주성", 0));
     }
 
     @Test
@@ -165,12 +165,65 @@ class BellQueueTest {
     void orderIsCopy() {
         // given
         BellQueue queue = new BellQueue();
-        queue.add("주성");
+        queue.add("주성", 0);
         List<String> order = queue.order();
 
         // when, then
         assertThrows(UnsupportedOperationException.class, () -> order.add("이건"));
         assertEquals(List.of("주성"), queue.order());
+    }
+
+    @Test
+    @DisplayName("벨을 울린 순간의 힌트 수를 사람마다 기록한다")
+    void recordHintCountWhenBuzzed() {
+        // given
+        BellQueue queue = new BellQueue();
+
+        // when
+        queue.add("주성", 0);
+        queue.add("이건", 1);
+
+        // then
+        assertEquals(0, queue.hintCountOf("주성"));
+        assertEquals(1, queue.hintCountOf("이건"));
+    }
+
+    @Test
+    @DisplayName("연타로 무시된 벨은 처음 울린 순간의 힌트 수를 바꾸지 않는다")
+    void ignoredBuzzKeepsFirstHintCount() {
+        // given
+        BellQueue queue = new BellQueue();
+        queue.add("주성", 0);
+
+        // when
+        queue.add("주성", 2);
+
+        // then
+        assertEquals(0, queue.hintCountOf("주성"));
+    }
+
+    @Test
+    @DisplayName("벨을 울리지 않은 사람의 힌트 수는 0이다")
+    void hintCountOfNotBuzzedIsZero() {
+        // given
+        BellQueue queue = new BellQueue();
+
+        // when, then
+        assertEquals(0, queue.hintCountOf("민수"));
+    }
+
+    @Test
+    @DisplayName("reset하면 힌트 기록도 지워진다")
+    void resetClearsHintCounts() {
+        // given
+        BellQueue queue = new BellQueue();
+        queue.add("이건", 2);
+
+        // when
+        queue.reset();
+
+        // then
+        assertEquals(0, queue.hintCountOf("이건"));
     }
 
     /** 동시 누르기 테스트에서 한 사람 몫. 벨을 여러 번 연타한다. */
@@ -186,7 +239,7 @@ class BellQueueTest {
         @Override
         public void run() {
             for (int i = 0; i < PRESSES_PER_PLAYER; i++) {
-                queue.add(nickname); // 같은 BellQueue에 여러 스레드가 동시에 넣기
+                queue.add(nickname, 0); // 같은 BellQueue에 여러 스레드가 동시에 넣기
             }
         }
     }
