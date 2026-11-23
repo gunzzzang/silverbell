@@ -46,7 +46,7 @@ class GameRoomTest {
     }
 
     @Test
-    @DisplayName("첫 번째 접속자가 방장이 되고 joined 호출 시 USERS와 SYSTEM 메시지가 전달된다")
+    @DisplayName("첫 번째 접속자가 방장이 되고 joined 호출 시 USERS, SCORE, SYSTEM 메시지가 전달된다")
     void testFirstUserIsHostAndBroadcastsUsers() {
         // 1. 입장 시도 (tryJoin)
         assertNull(gameRoom.tryJoin("User1"));
@@ -54,20 +54,26 @@ class GameRoomTest {
         // tryJoin만 불렸을 때는 아직 메시지가 방송되지 않아야 함 (JOIN_OK 순서 보장)
         assertEquals(0, broadcaster.broadcastedMessages.size());
 
-        // 2. JOIN_OK 이후 joined 호출 (USERS + SYSTEM 2건 전송)
+        // 2. JOIN_OK 이후 joined 호출 (USERS + SCORE + SYSTEM 3건 전송)
         gameRoom.joined("User1");
-        assertEquals(2, broadcaster.broadcastedMessages.size());
+        assertEquals(3, broadcaster.broadcastedMessages.size());
 
         Message usersMsg = broadcaster.broadcastedMessages.get(0);
         assertEquals(MessageType.USERS, usersMsg.type());
         assertEquals("User1:HOST:NOT_READY", usersMsg.body());
+
+        Message scoreMsg = broadcaster.broadcastedMessages.get(1);
+        assertEquals(MessageType.SCORE, scoreMsg.type());
+        assertEquals("User1:0", scoreMsg.body());
 
         // 3. 두 번째 유저 입장 시 GUEST로 추가됨
         assertNull(gameRoom.tryJoin("User2"));
         gameRoom.joined("User2");
         assertFalse(gameRoom.getPlayers().get(1).isHost());
         assertEquals("User1:HOST:NOT_READY;User2:GUEST:NOT_READY",
-                broadcaster.broadcastedMessages.get(2).body());
+                broadcaster.broadcastedMessages.get(3).body());
+        assertEquals("User1:0;User2:0",
+                broadcaster.broadcastedMessages.get(4).body());
     }
 
     @Test
@@ -114,22 +120,27 @@ class GameRoomTest {
     }
 
     @Test
-    @DisplayName("방장이 퇴장하면 다음 참가자에게 방장이 위임되고 USERS가 전송된다")
+    @DisplayName("방장이 퇴장하면 다음 참가자에게 방장이 위임되고 USERS와 SCORE가 전송된다")
     void testHostLeavesAndDelegates() {
         gameRoom.tryJoin("HostUser");
         gameRoom.joined("HostUser");
         gameRoom.tryJoin("GuestUser");
         gameRoom.joined("GuestUser");
 
-        // 방장 퇴장
+        // 방장 퇴장 (SYSTEM -> USERS -> SCORE 순서로 브로드캐스트)
         gameRoom.left("HostUser");
 
         assertEquals(1, gameRoom.getPlayers().size());
         assertEquals("GuestUser", gameRoom.getPlayers().get(0).getNickname());
         assertTrue(gameRoom.getPlayers().get(0).isHost());
 
-        Message lastMsg = broadcaster.broadcastedMessages.get(broadcaster.broadcastedMessages.size() - 1);
-        assertEquals("GuestUser:HOST:NOT_READY", lastMsg.body());
+        int size = broadcaster.broadcastedMessages.size();
+        Message usersMsg = broadcaster.broadcastedMessages.get(size - 2);
+        Message scoreMsg = broadcaster.broadcastedMessages.get(size - 1);
+        assertEquals(MessageType.USERS, usersMsg.type());
+        assertEquals("GuestUser:HOST:NOT_READY", usersMsg.body());
+        assertEquals(MessageType.SCORE, scoreMsg.type());
+        assertEquals("GuestUser:0", scoreMsg.body());
     }
 
     @Test
