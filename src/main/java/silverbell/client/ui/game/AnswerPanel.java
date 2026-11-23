@@ -44,8 +44,7 @@ class AnswerPanel extends JPanel {
     private static final float TURN_FONT_SIZE = 16f;
     /** {@code QUESTION}의 유형 값. 서버 {@code AnswerCheckerSelector}와 같은 이름 */
     private static final String MULTIPLE_CHOICE = "4지선다";
-    /** 입력 자리 카드 이름 (수업 밖 {@code CardLayout}은 {@code MainFrame}과 같은 방식) */
-    private static final String CARD_EMPTY = "empty";
+    /** 입력 자리 카드 이름 (수업 밖 {@code CardLayout}은 {@code MainFrame}과 같은 방식). 게임 화면은 {@code QUESTION}을 받아야 보여서, 그때 둘 중 하나로 바뀐다 */
     private static final String CARD_CHOICE = "choice";
     private static final String CARD_SHORT = "short";
 
@@ -86,7 +85,6 @@ class AnswerPanel extends JPanel {
         shortPanel.add(txtAnswer, BorderLayout.NORTH);
         shortPanel.add(new JLabel("내 차례가 되면 답을 쓰고 Enter", SwingConstants.CENTER), BorderLayout.CENTER);
 
-        inputPanel.add(new JLabel("답 입력 · 내 차례에만 켜짐", SwingConstants.CENTER), CARD_EMPTY);
         inputPanel.add(choicePanel, CARD_CHOICE);
         inputPanel.add(shortPanel, CARD_SHORT);
         add(inputPanel, BorderLayout.CENTER);
