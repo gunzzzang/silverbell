@@ -45,5 +45,5 @@ public final class GameConfig {
     // ── 한 판 ──────────────────────────────────
     /** Q7 종료 조건 — 한 판 문제 수 (Q11 발표 시간 보고 확정) */
     public static final int QUESTIONS_PER_GAME = 10;
-    public static final String QUESTION_FILE = "questions/sample.txt";
+    public static final String QUESTION_FILE = "questions/questions.txt";
 }

@@ -98,4 +98,42 @@ class QuestionDeckTest {
         // 보기 순서와 번호가 바뀌어도 갱신된 정답 번호의 보기는 여전히 "전송"이어야 함
         assertEquals(originalAnswerText, newAnswerText);
     }
+
+    @Test
+    @DisplayName("실제 questions.txt 파일 50문제 파싱 및 비율 검증")
+    void testLoadActualQuestionsFile() throws IOException {
+        java.nio.file.Path path = java.nio.file.Paths.get("questions/questions.txt");
+        assertTrue(java.nio.file.Files.exists(path), "questions/questions.txt 파일이 존재해야 합니다.");
+
+        QuestionDeck deck = new QuestionDeck();
+        try (java.io.InputStream is = java.nio.file.Files.newInputStream(path)) {
+            deck.loadQuestions(is);
+        }
+
+        // 50문제 전부가 형식 오류 없이 정상 로드되었는지 확인
+        assertEquals(50, deck.totalLoadedCount());
+
+        // 문제 유형 비율(4지선다 30 : 단답형 20) 및 난이도 비율(쉬움 20 : 보통 20 : 어려움 10) 검증
+        int multipleChoice = 0;
+        int shortAnswer = 0;
+        int easy = 0, medium = 0, hard = 0;
+
+        for (int i = 0; i < 50; i++) {
+            Question q = deck.drawNext();
+            if ("4지선다".equals(q.getType())) multipleChoice++;
+            else if ("단답형".equals(q.getType())) shortAnswer++;
+
+            switch (q.getDifficulty()) {
+                case "1" -> easy++;
+                case "2" -> medium++;
+                case "3" -> hard++;
+            }
+        }
+
+        assertEquals(30, multipleChoice);
+        assertEquals(20, shortAnswer);
+        assertEquals(20, easy);
+        assertEquals(20, medium);
+        assertEquals(10, hard);
+    }
 }
