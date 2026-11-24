@@ -5,10 +5,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.BorderFactory;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
 import silverbell.client.net.MessageRouter;
@@ -27,9 +27,13 @@ import silverbell.common.MessageType;
  * <p><b>담당: 라인 A</b>. 이 영역은 이 클래스만 고친다. 다른 영역을 고칠 일이 생기면 그 담당과 먼저 이야기한다.
  * 단, 입력칸 열기·닫기({@link #openInput()})는 #14(라인 B) 범위라 그 부분만 라인 A와 맞춰 고친다.
  *
- * <p>지금은 자리만 잡은 빈 패널이다(#7). 꾸미기는 M4(#26).
+ * <p>채팅창은 대기실({@code LobbyPanel})과 같은 모양이다: 채팅은 「닉네임: 내용」, 시스템 메시지는 「[시스템] 내용」(#54).
+ * 꾸미기는 M4(#26).
  */
 class ChatPanel extends JPanel {
+
+    /** 채팅창. 수업 채팅 예제처럼 {@code JScrollPane} + {@code JTextArea}(편집 불가) (#54) */
+    private final JTextArea textArea = new JTextArea();
 
     // ── 입력칸 열기·닫기 (#14, 라인 B) ──
     private final JTextField txtChat = new JTextField();
@@ -41,8 +45,13 @@ class ChatPanel extends JPanel {
         super(new BorderLayout());
         this.sender = sender;
         this.screen = screen;
-        setBorder(BorderFactory.createTitledBorder("채팅 (라인 A)"));
-        add(new JLabel("채팅 · Enter로 입력칸 열기", SwingConstants.CENTER), BorderLayout.CENTER);
+        setBorder(BorderFactory.createTitledBorder("채팅 (라인 A) · Enter로 입력칸 열기"));
+
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setFocusable(false); // 채팅창을 클릭해도 포커스를 가져가지 않게 (스페이스바가 계속 벨이 되도록)
+        add(new JScrollPane(textArea), BorderLayout.CENTER);
 
         txtChat.setVisible(false); // 평소에는 닫혀 있다 (PRD B1)
         txtChat.addActionListener(new SendAction()); // 입력칸 Enter = 보내고 닫기
@@ -53,13 +62,33 @@ class ChatPanel extends JPanel {
      * 이 영역이 받을 메시지를 등록한다. {@link GameScreen}이 접속 전에 한 번 부른다.
      *
      * <pre>
-     * CHAT     채팅창에 추가 (#6, 대기실 채팅과 같은 방식)
-     * SYSTEM   [시스템] 머리말로 추가 (#6)
+     * CHAT     「닉네임: 내용」으로 추가 (#54, 대기실 채팅과 같은 방식)
+     * SYSTEM   「[시스템] 내용」으로 추가 (#54)
      * WHISPER  귓속말 추가 (#25)
      * </pre>
      */
     void register(MessageRouter router) {
-        // 각 이슈에서 위 표의 종류를 router.on(...)으로 등록한다
+        router.on(MessageType.CHAT, message -> appendChat(message));
+        router.on(MessageType.SYSTEM, message -> appendSystem(message));
+    }
+
+    /** {@code CHAT|주성;ㅋㅋ} → 「주성: ㅋㅋ」. 내용은 마지막 값이라 {@code ;}가 있어도 그대로 나온다. */
+    private void appendChat(Message message) {
+        String[] parts = message.values(2);
+        if (parts.length == 2) {
+            appendLine(parts[0] + ": " + parts[1]);
+        }
+    }
+
+    /** {@code SYSTEM|주성 님이 벨을 울렸어요!} → 「[시스템] 주성 님이 벨을 울렸어요!」 */
+    private void appendSystem(Message message) {
+        appendLine("[시스템] " + message.body());
+    }
+
+    /** 한 줄 추가하고 맨 아래로 내린다 (수업 JavaChatClientView의 AppendText와 같은 방식) */
+    private void appendLine(String line) {
+        textArea.append(line + "\n");
+        textArea.setCaretPosition(textArea.getText().length()); // 새 글이 보이게 맨 아래로
     }
 
     /** 입력칸이 닫혀 있을 때 Enter를 누르면 {@link GameScreen}이 부른다. 입력칸을 열고 커서를 옮긴다. */
