@@ -54,7 +54,7 @@ class BellPanel extends JPanel {
      * <pre>
      * QUESTION  벨 켜기 (#14)
      * QUEUE     내가 줄에 있으면 「내 순서: n번」 (#14)
-     * RESULT    정답이면 벨 끄기 (#16) · 내가 틀렸으면 회색 + 「이 문제는 다시 못 울려요」 (#21)
+     * RESULT    내가 틀렸으면 회색 + 「이 문제는 다시 못 울려요」 (#21). 정답이면 서버가 바로 REVEAL을 보내서 따로 받지 않는다 (#16)
      * REVEAL    벨 끄기 (#14)
      * </pre>
      */

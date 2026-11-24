@@ -170,7 +170,7 @@ CONTRIBUTING의 테스트 규칙(이름 "~하면 ~된다", `// given`·`// when`
 | `interface`로 의존 끊기 | `Broadcaster`, `MessageListener`, `MessageSender`, `MessageHandler`, `AnswerChecker` | `game`이 소켓을, `net`이 화면을 모르게(DIP), 소켓 없이 JUnit 테스트 |
 | `Objects.requireNonNull`, `final class` 불변 객체 | `Message` | 여러 스레드가 같이 써도 안전 |
 | `instanceof` 패턴 (Java 16) | `Message.equals` | 짧게 쓰려고. 다른 데서는 안 늘림 |
-| `CardLayout` | `MainFrame` | 화면마다 창을 새로 띄우지 않고 한 창에서 전환 |
+| `CardLayout` | `MainFrame`, `AnswerPanel` | 화면마다 창을 새로 띄우지 않고 한 창에서 전환. 답 입력 영역의 4지선다 보기 ↔ 단답형 입력칸 전환(#16) |
 | 람다 (한 줄 등록만) | `invokeLater`, `router.on`, `dispatcher.register`, 테스트 | 수업 `FocusAdapterExample`과 같은 범위. 3-5절 |
 | `synchronized` 메서드·블록 | `send`, 목록 순회, `ClientRegistry`, `GameRoom`, `BellQueue` | 수업은 동기화 없이 썼지만, 벨 순서(N1)·동시 전송에서 실제로 꼬임 |
 | `socket.connect(주소, 시간 제한)` | `ServerConnection`, `ConsoleClient` | 서버가 없거나 IP가 틀리면 `new Socket(host, port)`는 오래 멈춤. 정해진 시간 안에 실패를 알림(N5) |
