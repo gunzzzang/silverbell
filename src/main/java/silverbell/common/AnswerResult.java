@@ -9,4 +9,6 @@ public final class AnswerResult {
 
     public static final String CORRECT = "정답";
     public static final String WRONG = "오답";
+    /** 답변 시간(D4) 안에 답하지 않음. 오답과 같이 감점하고 다음 사람에게 넘긴다(#21) */
+    public static final String TIMEOUT = "시간 초과";
 }
