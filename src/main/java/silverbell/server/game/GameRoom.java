@@ -7,10 +7,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import silverbell.common.AnswerResult;
 import silverbell.common.GameConfig;
 import silverbell.common.JoinFailReason;
 import silverbell.common.Message;
 import silverbell.common.MessageType;
+import silverbell.server.game.answer.AnswerChecker;
+import silverbell.server.game.answer.AnswerCheckerSelector;
 
 /**
  * 방 하나의 게임 상태. 참가자·방장·준비 상태, 지금 문제, 라운드 진행 여부, 점수를 가진다.
@@ -23,7 +26,8 @@ import silverbell.common.MessageType;
  * <p>할 일:
  * <ul>
  *   <li>M1 (11주차) · 입장, 닉네임 중복·인원 초과·게임 중 입장 거부, 방장 지정 (#5)</li>
- *   <li>M2 (12주차) · 문제 진행, 라운드 시작·끝, 문제 타이머 (#11) · 벨 받기 {@link #buzz(String)} (#14, 라인 B 작은 PR)</li>
+ *   <li>M2 (12주차) · 문제 진행, 라운드 시작·끝, 문제 타이머 (#11) · 벨 받기 {@link #buzz(String)} (#14, 라인 B 작은 PR)
+ *       · 답안 받기 {@link #answer(String, String)} (#16, 라인 B 작은 PR)</li>
  *   <li>M3 (13주차) · 준비 상태와 시작 조건(#19), 한 판 종료(#20), 퇴장·방장 넘기기(#22, 라인 B가 작은 PR로)</li>
  * </ul>
  */
@@ -35,6 +39,8 @@ public class GameRoom implements ConnectionListener {
     private final ScoreBoard scoreBoard = new ScoreBoard();
     /** 이번 문제에 벨을 울린 순서 (#14). 새 문제마다 비운다 */
     private final BellQueue bellQueue = new BellQueue();
+    /** 문제 유형에 맞는 채점기를 골라 준다 (#15). 상태가 없어 하나만 둔다 */
+    private final AnswerCheckerSelector checkerSelector = new AnswerCheckerSelector();
     private final ScheduledExecutorService roundScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "round-scheduler");
         t.setDaemon(true);
@@ -219,6 +225,45 @@ public class GameRoom implements ConnectionListener {
         broadcaster.broadcast(Message.of(MessageType.QUEUE, order.toArray(new String[0])));
         if (order.size() == 1) { // 빈 줄에 처음 들어왔으면 이 사람이 지금 차례
             broadcaster.broadcast(Message.of(MessageType.TURN, nickname, String.valueOf(GameConfig.ANSWER_TIME_MS)));
+        }
+    }
+
+    /**
+     * 답안을 받아 채점하고 모두에게 판정을 알린다 (#16, E1 답안 입력·E2 서버 채점·E3 판정 알림). {@code ANSWER} 핸들러가 부른다.
+     *
+     * <p>문제가 떠 있고 보낸 사람이 지금 차례(벨 줄 맨 앞)일 때만 채점한다. 아니면 무시한다(N7).
+     * 화면이 차례가 아닐 때 답 입력을 꺼도, 직접 {@code ANSWER}를 보내는 경우를 여기서 한 번 더 막는다.
+     *
+     * <pre>
+     * 정답 → SYSTEM|이건 님 정답! +2점   RESULT|이건;정답;2    SCORE|…   REVEAL|… (라운드 끝내기)
+     * 오답 → SYSTEM|주성 님 오답! -1점   RESULT|주성;오답;-1   SCORE|…
+     * </pre>
+     *
+     * <p>정답 점수는 벨을 울린 순간의 힌트 수({@link BellQueue#hintCountOf(String)})로 {@link ScoreBoard}가 계산한다(F1).
+     * 오답 뒤 다음 사람에게 차례를 넘기는 일은 #21이 이 메서드의 오답 쪽에 붙인다.
+     *
+     * <p>{@link #buzz(String)}처럼 이 객체를 잠근 채 확인·채점·전송을 한다. 그래야 같은 순간 문제 시간이 끝나도
+     * {@code REVEAL} 뒤에 {@code RESULT}가 가거나, 라운드가 두 번 끝나지 않는다.
+     */
+    public synchronized void answer(String nickname, String input) {
+        if (!roundActive) {
+            return;
+        }
+        if (!nickname.equals(bellQueue.current())) { // 차례가 아닌 사람의 답 (줄에 없거나 뒤에 있음)
+            return;
+        }
+        AnswerChecker checker = checkerSelector.select(currentQuestion.getType());
+        if (checker.isCorrect(currentQuestion.getAnswers(), input)) {
+            int earned = scoreBoard.addCorrectScore(nickname, currentQuestion.getDifficulty(), bellQueue.hintCountOf(nickname));
+            broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + " 님 정답! +" + earned + "점"));
+            broadcaster.broadcast(Message.of(MessageType.RESULT, nickname, AnswerResult.CORRECT, String.valueOf(earned)));
+            broadcastScoreBoard();
+            finishRound(); // #11의 라운드 끝내기: 정답 공개 후 다음 문제 예약
+        } else {
+            int delta = scoreBoard.applyPenalty(nickname); // -1 (음수 허용)
+            broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + " 님 오답! " + delta + "점"));
+            broadcaster.broadcast(Message.of(MessageType.RESULT, nickname, AnswerResult.WRONG, String.valueOf(delta)));
+            broadcastScoreBoard();
         }
     }
 
