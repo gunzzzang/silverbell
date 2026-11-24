@@ -171,6 +171,7 @@ CONTRIBUTING의 테스트 규칙(이름 "~하면 ~된다", `// given`·`// when`
 | `Objects.requireNonNull`, `final class` 불변 객체 | `Message` | 여러 스레드가 같이 써도 안전 |
 | `instanceof` 패턴 (Java 16) | `Message.equals` | 짧게 쓰려고. 다른 데서는 안 늘림 |
 | `CardLayout` | `MainFrame`, `AnswerPanel` | 화면마다 창을 새로 띄우지 않고 한 창에서 전환. 답 입력 영역의 4지선다 보기 ↔ 단답형 입력칸 전환(#16) |
+| `InputContext.endComposition()` | `AnswerPanel.turnOffInput` | 답 입력칸을 끌 때 조합 중인 한글 마지막 글자를 확정. 안 하면 시간 초과 때 Windows 입력기가 그 글자를 버려 「ㅁㅁㅁㅁ」이 「ㅁㅁㅁ」로 남음(#21) |
 | 람다 (한 줄 등록만) | `invokeLater`, `router.on`, `dispatcher.register`, 테스트 | 수업 `FocusAdapterExample`과 같은 범위. 3-5절 |
 | `synchronized` 메서드·블록 | `send`, 목록 순회, `ClientRegistry`, `GameRoom`, `BellQueue` | 수업은 동기화 없이 썼지만, 벨 순서(N1)·동시 전송에서 실제로 꼬임 |
 | `socket.connect(주소, 시간 제한)` | `ServerConnection`, `ConsoleClient` | 서버가 없거나 IP가 틀리면 `new Socket(host, port)`는 오래 멈춤. 정해진 시간 안에 실패를 알림(N5) |

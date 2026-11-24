@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.im.InputContext;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -236,10 +237,17 @@ class AnswerPanel extends JPanel {
         }
     }
 
-    /** 보기 버튼과 입력칸을 끄고 답변 카운트다운을 멈춘다. 입력칸에 커서가 있었으면 키 입력을 게임 화면에 돌려준다(스페이스바가 다시 벨). */
+    /**
+     * 보기 버튼과 입력칸을 끄고 답변 카운트다운을 멈춘다. 입력칸에 커서가 있었으면 쓰던 한글 마지막 글자를 확정하고,
+     * 키 입력을 게임 화면에 돌려준다(스페이스바가 다시 벨).
+     */
     private void turnOffInput() {
         countdownTimer.stop(); // 답을 보냈거나 판정·정답 공개·다음 문제가 오면 내 차례도 끝
         boolean hadFocus = txtAnswer.isFocusOwner(); // 끄기 전에 확인 (꺼지면 포커스가 엉뚱한 곳으로 갈 수 있다)
+        InputContext inputContext = txtAnswer.getInputContext(); // 이 입력칸의 한글 입력기 (입력기가 없는 환경이면 null)
+        if (hadFocus && inputContext != null) {
+            inputContext.endComposition(); // 조합 중인 마지막 글자를 입력칸에 확정. 안 하면 시간 초과로 끌 때 입력기가 버려서 「ㅁㅁㅁㅁ」이 「ㅁㅁㅁ」로 남는다 (#21)
+        }
         for (int i = 0; i < btnChoices.length; i++) {
             btnChoices[i].setEnabled(false);
         }
