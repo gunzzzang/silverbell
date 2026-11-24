@@ -310,10 +310,15 @@ public class GameRoom implements ConnectionListener {
      * <pre>
      * 다음 사람 있음 → SYSTEM|주성 님 오답! -1점 · 이건 님 차례예요   RESULT|주성;오답;-1   SCORE|…   QUEUE|이건   TURN|이건;10000
      * 줄이 빔       → SYSTEM|주성 님 시간 초과! -1점                 RESULT|주성;시간 초과;-1   SCORE|…   QUEUE|   TURN|  (문제 시간 다시 흐름)
+     * 모두 틀림     → SYSTEM|이건 님 오답! -1점   RESULT|이건;오답;-1   SCORE|…   QUEUE|   SYSTEM|모두 틀렸어요! 5초 뒤 정답을 공개해요
+     *                 (5초 뒤 문제 타이머가 끝나 REVEAL)
      * </pre>
      *
      * <p>{@link BellQueue#next()}가 그 사람을 줄에서 빼면서 틀린 사람으로 기록하므로, 이번 문제에서 다시 벨을 울려도
      * {@link #buzz(String)}가 무시한다(D6, N7). 줄이 비면 아직 안 울린 사람이 남은 문제 시간 동안 벨을 울릴 수 있다(D5).
+     * 방 안 사람이 모두 틀렸으면 더 울릴 사람이 없으니, 남은 문제 시간이 몇 초든 {@code ALL_WRONG_REVEAL_DELAY_MS}(5초)만 기다렸다 정답을 공개한다.
+     * 바로 공개하지 않는 건 마지막 판정을 볼 틈을 주려고다. 이때 {@code TURN|}을 보내지 않아서 화면 시간 바는 회색으로 멈춘 채 남는다
+     * (다시 흐르게 하면 바에 남은 시간과 실제 공개 시각이 달라진다).
      * {@code RESULT}를 {@code QUEUE}보다 먼저 보낸다. 화면은 {@code RESULT}로 「다시 못 울려요」를 띄우고, 뒤에 오는 줄에 내가 없어도 그 안내를 남긴다.
      *
      * @param result {@link AnswerResult#WRONG} 또는 {@link AnswerResult#TIMEOUT}
@@ -334,6 +339,10 @@ public class GameRoom implements ConnectionListener {
 
         if (next != null) {
             startTurn(next);
+        } else if (bellQueue.wrongCount() >= players.size()) { // 모두 틀림: 벨을 울릴 수 있는 사람이 없다 (틀린 뒤 나간 사람이 있어도 되게 >=)
+            long delaySec = GameConfig.ALL_WRONG_REVEAL_DELAY_MS / 1000;
+            broadcaster.broadcast(Message.of(MessageType.SYSTEM, "모두 틀렸어요! " + delaySec + "초 뒤 정답을 공개해요"));
+            questionTimer.start(GameConfig.ALL_WRONG_REVEAL_DELAY_MS, () -> finishRound()); // 남은 문제 시간을 5초로 바꿔 다시 잼. 끝나면 #11 라운드 끝내기
         } else {
             broadcaster.broadcast(Message.of(MessageType.TURN)); // 차례 없음: 화면의 문제 시간 바가 다시 흐른다
             resumeQuestionTimer(); // #11 기능 호출: 남은 문제 시간을 이어서 잰다

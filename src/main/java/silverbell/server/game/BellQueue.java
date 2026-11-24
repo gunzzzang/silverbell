@@ -92,6 +92,11 @@ public class BellQueue {
         hintCounts.clear();
     }
 
+    /** 이번 라운드에 틀린 사람 수(오답·시간 초과). 방 안 사람이 모두 틀렸는지 볼 때 쓴다(#21). */
+    public synchronized int wrongCount() {
+        return wrong.size();
+    }
+
     /** 줄에 선 사람 수. */
     public synchronized int size() {
         return line.size();

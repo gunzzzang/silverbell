@@ -226,6 +226,37 @@ class BellQueueTest {
         assertEquals(0, queue.hintCountOf("이건"));
     }
 
+    @Test
+    @DisplayName("차례인 사람이 틀릴 때마다 틀린 사람 수가 하나씩 는다")
+    void nextCountsWrongPlayers() {
+        // given
+        BellQueue queue = new BellQueue();
+        queue.add("주성", 0);
+        queue.add("이건", 0);
+
+        // when
+        queue.next();
+        queue.next();
+
+        // then
+        assertEquals(2, queue.wrongCount());
+    }
+
+    @Test
+    @DisplayName("reset하면 틀린 사람 수가 0이 된다")
+    void resetClearsWrongCount() {
+        // given
+        BellQueue queue = new BellQueue();
+        queue.add("주성", 0);
+        queue.next();
+
+        // when
+        queue.reset();
+
+        // then
+        assertEquals(0, queue.wrongCount());
+    }
+
     /** 동시 누르기 테스트에서 한 사람 몫. 벨을 여러 번 연타한다. */
     private static class Presser extends Thread {
         private final BellQueue queue;

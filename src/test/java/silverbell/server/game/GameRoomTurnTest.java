@@ -104,7 +104,7 @@ class GameRoomTurnTest {
     }
 
     @Test
-    @DisplayName("줄에 남은 사람 없이 오답이면 문제 시간을 이어서 재고 답변 시간은 멈춘다")
+    @DisplayName("줄에 남은 사람 없이 오답이어도 아직 안 틀린 사람이 있으면 문제 시간을 이어서 재고 답변 시간은 멈춘다")
     void wrongAnswerWithEmptyLineResumesQuestionTime() throws IOException {
         // given
         GameRoom room = startedRoom();
@@ -142,7 +142,7 @@ class GameRoomTurnTest {
     }
 
     @Test
-    @DisplayName("줄에 남은 사람 없이 답변 시간이 끝나면 빈 줄·빈 차례를 보내고 문제 시간을 이어서 잰다")
+    @DisplayName("줄에 남은 사람 없이 답변 시간이 끝나도 아직 안 틀린 사람이 있으면 빈 줄·빈 차례를 보내고 문제 시간을 이어서 잰다")
     void answerTimeUpWithEmptyLineResumesQuestionTime() throws IOException {
         // given
         GameRoom room = startedRoom();
@@ -161,6 +161,76 @@ class GameRoomTurnTest {
                 Message.of(MessageType.TURN)
         ), broadcaster.broadcasts());
         assertFalse(questionTimer.paused);
+    }
+
+    @Test
+    @DisplayName("방 안 사람이 모두 틀리면 모두 틀렸다는 알림을 보내고 남은 문제 시간을 5초로 다시 잰다")
+    void allWrongWaitsShortDelay() throws IOException {
+        // given
+        GameRoom room = startedRoom();
+        room.buzz("방장");
+        room.buzz("주성");
+        room.buzz("이건");
+        room.answer("방장", "게이트웨이");
+        room.answer("주성", "게이트웨이");
+        broadcaster.clear();
+
+        // when
+        room.answer("이건", "게이트웨이");
+
+        // then
+        assertEquals(List.of(
+                Message.of(MessageType.SYSTEM, "이건 님 오답! -1점"),
+                Message.of(MessageType.RESULT, "이건", "오답", "-1"),
+                Message.of(MessageType.SCORE, "방장:-1", "이건:-1", "주성:-1"),
+                Message.of(MessageType.QUEUE),
+                Message.of(MessageType.SYSTEM, "모두 틀렸어요! 5초 뒤 정답을 공개해요")
+        ), broadcaster.broadcasts());
+        assertEquals(GameConfig.ALL_WRONG_REVEAL_DELAY_MS, questionTimer.startedMs);
+        assertTrue(questionTimer.running);
+        assertTrue(room.isRoundActive());
+    }
+
+    @Test
+    @DisplayName("마지막 사람이 시간 초과로 틀려도 모두 틀렸으면 남은 문제 시간을 5초로 다시 잰다")
+    void allWrongByTimeUpWaitsShortDelay() throws IOException {
+        // given
+        GameRoom room = startedRoom();
+        room.buzz("방장");
+        room.buzz("주성");
+        room.buzz("이건");
+        room.answer("방장", "게이트웨이");
+        room.answer("주성", "게이트웨이");
+
+        // when
+        answerTimer.timeUp(); // 이건이 답하지 않음
+
+        // then
+        assertEquals(GameConfig.ALL_WRONG_REVEAL_DELAY_MS, questionTimer.startedMs);
+        assertTrue(room.isRoundActive());
+    }
+
+    @Test
+    @DisplayName("모두 틀린 뒤 5초가 지나면 정답을 공개하고 라운드가 끝난다")
+    void allWrongRevealsAfterDelay() throws IOException {
+        // given
+        GameRoom room = startedRoom();
+        room.buzz("방장");
+        room.buzz("주성");
+        room.buzz("이건");
+        room.answer("방장", "게이트웨이");
+        room.answer("주성", "게이트웨이");
+        room.answer("이건", "게이트웨이");
+        broadcaster.clear();
+
+        // when
+        questionTimer.timeUp(); // 5초가 다 됨
+
+        // then
+        assertEquals(List.of(
+                Message.of(MessageType.REVEAL, "서브넷 마스크 / 서브넷마스크")
+        ), broadcaster.broadcasts());
+        assertFalse(room.isRoundActive());
     }
 
     @Test
