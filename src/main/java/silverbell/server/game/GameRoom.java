@@ -28,7 +28,7 @@ import silverbell.server.game.answer.AnswerCheckerSelector;
  *   <li>M1 (11주차) · 입장, 닉네임 중복·인원 초과·게임 중 입장 거부, 방장 지정 (#5)</li>
  *   <li>M2 (12주차) · 문제 진행, 라운드 시작·끝, 문제 타이머 (#11) · 벨 받기 {@link #buzz(String)} (#14, 라인 B 작은 PR)
  *       · 답안 받기 {@link #answer(String, String)} (#16, 라인 B 작은 PR)</li>
- *   <li>M3 (13주차) · 준비 상태와 시작 조건(#19), 한 판 종료(#20), 퇴장·방장 넘기기(#22, 라인 B가 작은 PR로)</li>
+ *   <li>M3 (13주차) · 초성 힌트(#18), 준비 상태와 시작 조건(#19), 한 판 종료(#20), 퇴장·방장 넘기기(#22, 라인 B가 작은 PR로)</li>
  * </ul>
  */
 public class GameRoom implements ConnectionListener {
@@ -51,6 +51,7 @@ public class GameRoom implements ConnectionListener {
     private boolean isGaming = false;
     private boolean roundActive = false;
     private int questionNumber = 0;
+    private int revealedHintCount = 0;
     private Question currentQuestion;
     private ScheduledFuture<?> nextQuestionTask;
 
@@ -125,6 +126,7 @@ public class GameRoom implements ConnectionListener {
                 // 모두 나가면 게임 상태를 초기화해 빈 방에서 문제가 계속 돌지 않게 함
                 isGaming = false;
                 roundActive = false;
+                revealedHintCount = 0;
                 questionTimer.stop();
                 if (nextQuestionTask != null) {
                     nextQuestionTask.cancel(false);
@@ -166,6 +168,7 @@ public class GameRoom implements ConnectionListener {
         this.currentQuestion = questionDeck.drawNext();
         this.questionNumber++;
         this.roundActive = true;
+        this.revealedHintCount = 0; // 새 문제마다 공개된 힌트 수 초기화 (#18)
         bellQueue.reset(); // 새 문제마다 벨 줄·틀린 사람·힌트 기록을 비운다 (#14)
 
         // 단답형은 choices가 비어 있으므로 4칸을 빈 문자열로 채워 프로토콜 9칸 형식을 유지
@@ -187,7 +190,49 @@ public class GameRoom implements ConnectionListener {
         );
 
         broadcaster.broadcast(questionMsg);
-        questionTimer.start(GameConfig.QUESTION_TIME_MS, this::finishRound);
+        questionTimer.start(GameConfig.QUESTION_TIME_MS, this::finishRound, this::onHintStageReached);
+    }
+
+    /**
+     * 문제 타이머가 1차·2차 힌트 시점에 도달했을 때 호출된다 (#18, C4, F1).
+     * 단답형 문제에만 초성 힌트를 생성하고 바뀐 점수와 함께 브로드캐스트한다.
+     */
+    public synchronized void onHintStageReached(int stage) {
+        if (!roundActive || currentQuestion == null) {
+            return;
+        }
+        if (!"단답형".equals(currentQuestion.getType())) {
+            return;
+        }
+        if (stage <= revealedHintCount) {
+            return;
+        }
+
+        String hintText = HintMaker.make(currentQuestion, stage);
+        if (hintText.isEmpty()) {
+            return;
+        }
+
+        this.revealedHintCount = stage;
+        int reducedScore = calculateCurrentScore(currentQuestion.getDifficulty(), revealedHintCount);
+
+        // MessageType.HINT 규약: 힌트 단계;초성 힌트;바뀐 점수
+        broadcaster.broadcast(Message.of(
+                MessageType.HINT,
+                String.valueOf(stage),
+                hintText,
+                String.valueOf(reducedScore)
+        ));
+    }
+
+    private int calculateCurrentScore(String difficulty, int hintCount) {
+        int baseScore;
+        try {
+            baseScore = Integer.parseInt(difficulty.strip());
+        } catch (NumberFormatException | NullPointerException e) {
+            baseScore = GameConfig.MIN_CORRECT_SCORE;
+        }
+        return Math.max(GameConfig.MIN_CORRECT_SCORE, baseScore - Math.max(0, hintCount));
     }
 
     /**
@@ -200,18 +245,6 @@ public class GameRoom implements ConnectionListener {
 
     /**
      * 벨을 울린다 (#14, D1 벨 누르기·D2 벨 대기열·D3 순서 표시). {@code BUZZ} 핸들러가 부른다.
-     *
-     * <p>문제가 떠 있을 때만 받는다. 줄에 들어가면 모두에게 알림과 줄 순서({@code QUEUE})를 보내고,
-     * 줄 맨 앞이 됐으면 지금 차례({@code TURN})도 보낸다. 벨을 울린 순간의 힌트 수도 같이 기록한다(F1).
-     * 문제가 없을 때, 이미 줄에 있을 때, 이번 문제에서 틀렸을 때는 무시한다(N7).
-     *
-     * <pre>
-     * 주성 벨 → SYSTEM|주성 님이 벨을 울렸어요!  QUEUE|주성       TURN|주성;10000
-     * 이건 벨 → SYSTEM|이건 님이 벨을 울렸어요!  QUEUE|주성;이건  (차례는 그대로 주성)
-     * </pre>
-     *
-     * <p>이 객체를 잠근 채 보낸다. 잠금 밖에서 보내면 그사이 {@link #finishRound()}가 끼어들어
-     * {@code REVEAL} 뒤에 {@code QUEUE}·{@code TURN}이 도착할 수 있다.
      */
     public synchronized void buzz(String nickname) {
         if (!roundActive) {
@@ -230,20 +263,6 @@ public class GameRoom implements ConnectionListener {
 
     /**
      * 답안을 받아 채점하고 모두에게 판정을 알린다 (#16, E1 답안 입력·E2 서버 채점·E3 판정 알림). {@code ANSWER} 핸들러가 부른다.
-     *
-     * <p>문제가 떠 있고 보낸 사람이 지금 차례(벨 줄 맨 앞)일 때만 채점한다. 아니면 무시한다(N7).
-     * 화면이 차례가 아닐 때 답 입력을 꺼도, 직접 {@code ANSWER}를 보내는 경우를 여기서 한 번 더 막는다.
-     *
-     * <pre>
-     * 정답 → SYSTEM|이건 님 정답! +2점   RESULT|이건;정답;2    SCORE|…   REVEAL|… (라운드 끝내기)
-     * 오답 → SYSTEM|주성 님 오답! -1점   RESULT|주성;오답;-1   SCORE|…
-     * </pre>
-     *
-     * <p>정답 점수는 벨을 울린 순간의 힌트 수({@link BellQueue#hintCountOf(String)})로 {@link ScoreBoard}가 계산한다(F1).
-     * 오답 뒤 다음 사람에게 차례를 넘기는 일은 #21이 이 메서드의 오답 쪽에 붙인다.
-     *
-     * <p>{@link #buzz(String)}처럼 이 객체를 잠근 채 확인·채점·전송을 한다. 그래야 같은 순간 문제 시간이 끝나도
-     * {@code REVEAL} 뒤에 {@code RESULT}가 가거나, 라운드가 두 번 끝나지 않는다.
      */
     public synchronized void answer(String nickname, String input) {
         if (!roundActive) {
@@ -302,10 +321,10 @@ public class GameRoom implements ConnectionListener {
 
     /**
      * 지금 공개된 힌트 수를 반환한다.
-     * M2에서는 항상 0을 돌려주고 #18에서 채운다. #14가 벨을 울린 순간 기록한다.
+     * #14가 벨을 울린 순간 기록한다.
      */
     public synchronized int getRevealedHintCount() {
-        return 0;
+        return revealedHintCount;
     }
 
     /**
