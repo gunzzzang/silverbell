@@ -214,7 +214,7 @@ public class GameRoom implements ConnectionListener {
         }
 
         this.revealedHintCount = stage;
-        int reducedScore = calculateCurrentScore(currentQuestion.getDifficulty(), revealedHintCount);
+        int reducedScore = scoreBoard.calculateCorrectScore(currentQuestion.getDifficulty(), revealedHintCount);
 
         // MessageType.HINT 규약: 힌트 단계;초성 힌트;바뀐 점수
         broadcaster.broadcast(Message.of(
@@ -223,16 +223,6 @@ public class GameRoom implements ConnectionListener {
                 hintText,
                 String.valueOf(reducedScore)
         ));
-    }
-
-    private int calculateCurrentScore(String difficulty, int hintCount) {
-        int baseScore;
-        try {
-            baseScore = Integer.parseInt(difficulty.strip());
-        } catch (NumberFormatException | NullPointerException e) {
-            baseScore = GameConfig.MIN_CORRECT_SCORE;
-        }
-        return Math.max(GameConfig.MIN_CORRECT_SCORE, baseScore - Math.max(0, hintCount));
     }
 
     /**
@@ -245,6 +235,18 @@ public class GameRoom implements ConnectionListener {
 
     /**
      * 벨을 울린다 (#14, D1 벨 누르기·D2 벨 대기열·D3 순서 표시). {@code BUZZ} 핸들러가 부른다.
+     *
+     * <p>문제가 떠 있을 때만 받는다. 줄에 들어가면 모두에게 알림과 줄 순서({@code QUEUE})를 보내고,
+     * 줄 맨 앞이 됐으면 지금 차례({@code TURN})도 보낸다. 벨을 울린 순간의 힌트 수도 같이 기록한다(F1).
+     * 문제가 없을 때, 이미 줄에 있을 때, 이번 문제에서 틀렸을 때는 무시한다(N7).
+     *
+     * <pre>
+     * 주성 벨 → SYSTEM|주성 님이 벨을 울렸어요!  QUEUE|주성       TURN|주성;10000
+     * 이건 벨 → SYSTEM|이건 님이 벨을 울렸어요!  QUEUE|주성;이건  (차례는 그대로 주성)
+     * </pre>
+     *
+     * <p>이 객체를 잠근 채 보낸다. 잠금 밖에서 보내면 그사이 {@link #finishRound()}가 끼어들어
+     * {@code REVEAL} 뒤에 {@code QUEUE}·{@code TURN}이 도착할 수 있다.
      */
     public synchronized void buzz(String nickname) {
         if (!roundActive) {
@@ -263,6 +265,20 @@ public class GameRoom implements ConnectionListener {
 
     /**
      * 답안을 받아 채점하고 모두에게 판정을 알린다 (#16, E1 답안 입력·E2 서버 채점·E3 판정 알림). {@code ANSWER} 핸들러가 부른다.
+     *
+     * <p>문제가 떠 있고 보낸 사람이 지금 차례(벨 줄 맨 앞)일 때만 채점한다. 아니면 무시한다(N7).
+     * 화면이 차례가 아닐 때 답 입력을 꺼도, 직접 {@code ANSWER}를 보내는 경우를 여기서 한 번 더 막는다.
+     *
+     * <pre>
+     * 정답 → SYSTEM|이건 님 정답! +2점   RESULT|이건;정답;2    SCORE|…   REVEAL|… (라운드 끝내기)
+     * 오답 → SYSTEM|주성 님 오답! -1점   RESULT|주성;오답;-1   SCORE|…
+     * </pre>
+     *
+     * <p>정답 점수는 벨을 울린 순간의 힌트 수({@link BellQueue#hintCountOf(String)})로 {@link ScoreBoard}가 계산한다(F1).
+     * 오답 뒤 다음 사람에게 차례를 넘기는 일은 #21이 이 메서드의 오답 쪽에 붙인다.
+     *
+     * <p>{@link #buzz(String)}처럼 이 객체를 잠근 채 확인·채점·전송을 한다. 그래야 같은 순간 문제 시간이 끝나도
+     * {@code REVEAL} 뒤에 {@code RESULT}가 가거나, 라운드가 두 번 끝나지 않는다.
      */
     public synchronized void answer(String nickname, String input) {
         if (!roundActive) {
