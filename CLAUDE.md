@@ -178,12 +178,9 @@ CONTRIBUTING의 테스트 규칙(이름 "~하면 ~된다", `// given`·`// when`
 | `LocalTime` + `DateTimeFormatter` | `ServerLog` | 로그에 시각 붙이기(#4 완료 기준, 보고서용) |
 | `AutoCloseable` | `SocketServer`, `ServerConnection` | JUnit에서 서버·연결을 켰다 끄기 |
 | JUnit 5, Gradle | `src/test`, `build.gradle` | `game` 패키지 단위 테스트, CI |
+| `ScheduledExecutorService` | `QuestionTimer`, `GameRoom`의 다음 문제 예약 | 서버 쪽 타이머(문제 20초 #11, 답변 10초 #21). 수업에는 화면용 `javax.swing.Timer`만 있었고, 라인 A가 #11에서 정함. 멈춤·재개·중단이 필요해서 `QuestionTimer` 한 클래스에 모으고, 답변 타이머(#21)는 같은 클래스를 하나 더 만들어 씀 |
 
-**아직 정하지 않은 것** (정하면 위 표로 옮겨요)
-
-- **서버 쪽 타이머**(문제 20초, 답변 10초, 초성 힌트 시점 — #11): 수업에는 화면용 `javax.swing.Timer`만 있었어요. 후보는 ① `extends Thread` + `Thread.sleep` + `running` 플래그(수업 스레드 범위 안), ② `javax.swing.Timer`. `GameRoom` 담당(라인 A)과 정해요.
-
-**기본으로 쓰지 않는 것**: `java.util.concurrent` 전부(`ExecutorService`, `ConcurrentHashMap`, `CopyOnWriteArrayList`, `Atomic*`), `java.util.function`·메서드 참조, `ObjectOutputStream` 직렬화, JSON 라이브러리, NIO, 외부 라이브러리, Stream API, 여러 줄짜리 람다. 이걸로 할 일은 `Vector`·`synchronized`·`volatile`·우리 인터페이스로 해요.
+**기본으로 쓰지 않는 것** (위 표의 서버 타이머만 예외): `java.util.concurrent` 전부(`ExecutorService`, `ConcurrentHashMap`, `CopyOnWriteArrayList`, `Atomic*`), `java.util.function`·메서드 참조, `ObjectOutputStream` 직렬화, JSON 라이브러리, NIO, 외부 라이브러리, Stream API, 여러 줄짜리 람다. 이걸로 할 일은 `Vector`·`synchronized`·`volatile`·우리 인터페이스로 해요.
 
 ## 6. Claude가 코딩할 때 순서
 

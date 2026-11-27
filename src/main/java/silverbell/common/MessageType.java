@@ -64,6 +64,7 @@ public enum MessageType {
      * 서버 → 전체 · 지금 차례인 사람;답변 시간(ms) · D3 순서 표시, D4 답변 시간.
      * 차례가 새로 생기거나 바뀔 때 보낸다(#14·#21). 예: {@code TURN|주성;10000}.
      * 차례 없음(줄이 빔)은 값 없이 {@code TURN|}. 문제 시간 바가 이걸 받고 다시 흐른다(#11).
+     * 오답·시간 초과 뒤에는 {@code RESULT}·{@code SCORE}·{@code QUEUE} 다음에 보낸다(#21).
      */
     TURN,
     /**
@@ -74,8 +75,8 @@ public enum MessageType {
     ANSWER,
     /**
      * 서버 → 전체 · 누가;판정;얻은 점수 · E3 판정 알림, D5 다음 차례.
-     * 판정은 {@link AnswerResult}의 {@code 정답}·{@code 오답}(#16), {@code 시간 초과}는 #21. 얻은 점수는 부호 있는 정수.
-     * 예: {@code RESULT|이건;정답;2}, {@code RESULT|주성;오답;-1}
+     * 판정은 {@link AnswerResult}의 {@code 정답}·{@code 오답}(#16)·{@code 시간 초과}(#21). 얻은 점수는 부호 있는 정수.
+     * 예: {@code RESULT|이건;정답;2}, {@code RESULT|주성;오답;-1}, {@code RESULT|주성;시간 초과;-1}
      */
     RESULT,
 

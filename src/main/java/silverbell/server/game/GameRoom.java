@@ -28,7 +28,8 @@ import silverbell.server.game.answer.AnswerCheckerSelector;
  *   <li>M1 (11주차) · 입장, 닉네임 중복·인원 초과·게임 중 입장 거부, 방장 지정 (#5)</li>
  *   <li>M2 (12주차) · 문제 진행, 라운드 시작·끝, 문제 타이머 (#11) · 벨 받기 {@link #buzz(String)} (#14, 라인 B 작은 PR)
  *       · 답안 받기 {@link #answer(String, String)} (#16, 라인 B 작은 PR)</li>
- *   <li>M3 (13주차) · 준비 상태와 시작 조건(#19), 한 판 종료(#20), 퇴장·방장 넘기기(#22, 라인 B가 작은 PR로)</li>
+ *   <li>M3 (13주차) · 준비 상태와 시작 조건(#19), 한 판 종료(#20), 퇴장·방장 넘기기(#22, 라인 B가 작은 PR로)
+ *       · 답변 시간·다음 차례·재도전 금지 {@code passTurn} (#21, 라인 B 작은 PR)</li>
  * </ul>
  */
 public class GameRoom implements ConnectionListener {
@@ -36,6 +37,11 @@ public class GameRoom implements ConnectionListener {
     private final Broadcaster broadcaster;
     private final QuestionDeck questionDeck;
     private final QuestionTimer questionTimer;
+    /**
+     * 답변 시간(D4)을 재는 타이머 (#21). 「정해진 시간이 지나면 한 번 부르고, 멈출 수 있는」 일이 문제 타이머와 같아서
+     * 같은 클래스({@link QuestionTimer})를 하나 더 만들어 쓴다. 타이머 코드(#11)는 고치지 않는다.
+     */
+    private final QuestionTimer answerTimer;
     private final ScoreBoard scoreBoard = new ScoreBoard();
     /** 이번 문제에 벨을 울린 순서 (#14). 새 문제마다 비운다 */
     private final BellQueue bellQueue = new BellQueue();
@@ -56,18 +62,20 @@ public class GameRoom implements ConnectionListener {
 
     /** 기존 #5 테스트 호환용 생성자 */
     public GameRoom(Broadcaster broadcaster) {
-        this(broadcaster, new QuestionDeck(), new QuestionTimer());
+        this(broadcaster, new QuestionDeck(), new QuestionTimer(), new QuestionTimer());
     }
 
     /** 서버 실행 및 라운드 테스트용 생성자 */
     public GameRoom(Broadcaster broadcaster, QuestionDeck questionDeck) {
-        this(broadcaster, questionDeck, new QuestionTimer());
+        this(broadcaster, questionDeck, new QuestionTimer(), new QuestionTimer());
     }
 
-    GameRoom(Broadcaster broadcaster, QuestionDeck questionDeck, QuestionTimer questionTimer) {
+    /** 테스트용: 문제 타이머와 답변 타이머를 바꿔 넣어 시간을 기다리지 않고 확인한다 (#21). */
+    GameRoom(Broadcaster broadcaster, QuestionDeck questionDeck, QuestionTimer questionTimer, QuestionTimer answerTimer) {
         this.broadcaster = broadcaster;
         this.questionDeck = questionDeck;
         this.questionTimer = questionTimer;
+        this.answerTimer = answerTimer;
     }
 
     /**
@@ -126,6 +134,7 @@ public class GameRoom implements ConnectionListener {
                 isGaming = false;
                 roundActive = false;
                 questionTimer.stop();
+                answerTimer.stop(); // 답변 중에 모두 나가도 시간 초과가 오지 않게 (#21)
                 if (nextQuestionTask != null) {
                     nextQuestionTask.cancel(false);
                 }
@@ -202,7 +211,8 @@ public class GameRoom implements ConnectionListener {
      * 벨을 울린다 (#14, D1 벨 누르기·D2 벨 대기열·D3 순서 표시). {@code BUZZ} 핸들러가 부른다.
      *
      * <p>문제가 떠 있을 때만 받는다. 줄에 들어가면 모두에게 알림과 줄 순서({@code QUEUE})를 보내고,
-     * 줄 맨 앞이 됐으면 지금 차례({@code TURN})도 보낸다. 벨을 울린 순간의 힌트 수도 같이 기록한다(F1).
+     * 줄 맨 앞이 됐으면 차례를 시작한다({@code startTurn}: {@code TURN}, 문제 시간 멈춤, 답변 시간 재기 — #21).
+     * 벨을 울린 순간의 힌트 수도 같이 기록한다(F1).
      * 문제가 없을 때, 이미 줄에 있을 때, 이번 문제에서 틀렸을 때는 무시한다(N7).
      *
      * <pre>
@@ -224,7 +234,7 @@ public class GameRoom implements ConnectionListener {
         List<String> order = bellQueue.order();
         broadcaster.broadcast(Message.of(MessageType.QUEUE, order.toArray(new String[0])));
         if (order.size() == 1) { // 빈 줄에 처음 들어왔으면 이 사람이 지금 차례
-            broadcaster.broadcast(Message.of(MessageType.TURN, nickname, String.valueOf(GameConfig.ANSWER_TIME_MS)));
+            startTurn(nickname);
         }
     }
 
@@ -236,11 +246,10 @@ public class GameRoom implements ConnectionListener {
      *
      * <pre>
      * 정답 → SYSTEM|이건 님 정답! +2점   RESULT|이건;정답;2    SCORE|…   REVEAL|… (라운드 끝내기)
-     * 오답 → SYSTEM|주성 님 오답! -1점   RESULT|주성;오답;-1   SCORE|…
+     * 오답 → {@code passTurn}: 감점하고 줄 다음 사람에게 차례를 넘긴다 (#21)
      * </pre>
      *
      * <p>정답 점수는 벨을 울린 순간의 힌트 수({@link BellQueue#hintCountOf(String)})로 {@link ScoreBoard}가 계산한다(F1).
-     * 오답 뒤 다음 사람에게 차례를 넘기는 일은 #21이 이 메서드의 오답 쪽에 붙인다.
      *
      * <p>{@link #buzz(String)}처럼 이 객체를 잠근 채 확인·채점·전송을 한다. 그래야 같은 순간 문제 시간이 끝나도
      * {@code REVEAL} 뒤에 {@code RESULT}가 가거나, 라운드가 두 번 끝나지 않는다.
@@ -258,12 +267,85 @@ public class GameRoom implements ConnectionListener {
             broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + " 님 정답! +" + earned + "점"));
             broadcaster.broadcast(Message.of(MessageType.RESULT, nickname, AnswerResult.CORRECT, String.valueOf(earned)));
             broadcastScoreBoard();
-            finishRound(); // #11의 라운드 끝내기: 정답 공개 후 다음 문제 예약
+            finishRound(); // #11의 라운드 끝내기: 정답 공개 후 다음 문제 예약 (답변 타이머도 여기서 멈춘다)
         } else {
-            int delta = scoreBoard.applyPenalty(nickname); // -1 (음수 허용)
-            broadcaster.broadcast(Message.of(MessageType.SYSTEM, nickname + " 님 오답! " + delta + "점"));
-            broadcaster.broadcast(Message.of(MessageType.RESULT, nickname, AnswerResult.WRONG, String.valueOf(delta)));
-            broadcastScoreBoard();
+            passTurn(nickname, AnswerResult.WRONG);
+        }
+    }
+
+    /**
+     * 줄 맨 앞이 된 사람의 답변 차례를 시작한다 (#21, D3 순서 표시·D4 답변 시간).
+     * 모두에게 {@code TURN}을 보내고, 차례 동안 문제 시간을 멈추고(C2), 답변 시간을 처음부터 잰다.
+     * 문제 시간이 얼마 남았든 답변 시간은 따로 재므로, 1초 남기고 울려도 답변 시간을 다 쓸 수 있다.
+     *
+     * <p>{@link #buzz(String)}(빈 줄에 첫 벨)와 {@code passTurn}(앞사람이 틀림)이 이 객체를 잠근 채 부른다.
+     */
+    private void startTurn(String nickname) {
+        broadcaster.broadcast(Message.of(MessageType.TURN, nickname, String.valueOf(GameConfig.ANSWER_TIME_MS)));
+        pauseQuestionTimer(); // #11 기능 호출: 답하는 동안 문제 시간·힌트 시간 멈춤
+        int turnQuestion = questionNumber; // 타이머가 늦게 불렸을 때 어느 문제의 차례였는지 확인하려고 기억해 둔다
+        answerTimer.start(GameConfig.ANSWER_TIME_MS, () -> answerTimeUp(nickname, turnQuestion)); // 시간이 다 되면 타이머 스레드가 부름
+    }
+
+    /**
+     * 답변 시간이 끝났을 때 답변 타이머 스레드가 부른다 (#21, D4 답변 시간). 시간 초과는 오답처럼 처리한다.
+     *
+     * <p>타이머는 시간이 다 된 순간 잠금 밖에서 이 메서드를 부르므로, 그사이 그 사람이 답을 보냈거나 라운드가 끝났을 수 있다.
+     * 그래서 「아직 같은 문제이고, 그 사람이 아직 차례인가」를 잠근 뒤 다시 확인하고 아니면 무시한다.
+     * 확인하지 않으면 정답을 보낸 바로 그 순간 시간이 끝났을 때, 끝난 차례에 시간 초과 감점이 한 번 더 들어간다.
+     */
+    synchronized void answerTimeUp(String nickname, int turnQuestion) {
+        if (!roundActive || turnQuestion != questionNumber) {
+            return;
+        }
+        if (!nickname.equals(bellQueue.current())) { // 이미 답해서 차례가 넘어감
+            return;
+        }
+        passTurn(nickname, AnswerResult.TIMEOUT);
+    }
+
+    /**
+     * 지금 차례인 사람이 틀렸을 때(오답·시간 초과) 감점하고 줄 다음 사람에게 차례를 넘긴다 (#21, D5 다음 차례·D6 재도전 금지).
+     *
+     * <pre>
+     * 다음 사람 있음 → SYSTEM|주성 님 오답! -1점 · 이건 님 차례예요   RESULT|주성;오답;-1   SCORE|…   QUEUE|이건   TURN|이건;10000
+     * 줄이 빔       → SYSTEM|주성 님 시간 초과! -1점                 RESULT|주성;시간 초과;-1   SCORE|…   QUEUE|   TURN|  (문제 시간 다시 흐름)
+     * 모두 틀림     → SYSTEM|이건 님 오답! -1점   RESULT|이건;오답;-1   SCORE|…   QUEUE|   SYSTEM|모두 틀렸어요! 5초 뒤 정답을 공개해요
+     *                 (5초 뒤 문제 타이머가 끝나 REVEAL)
+     * </pre>
+     *
+     * <p>{@link BellQueue#next()}가 그 사람을 줄에서 빼면서 틀린 사람으로 기록하므로, 이번 문제에서 다시 벨을 울려도
+     * {@link #buzz(String)}가 무시한다(D6, N7). 줄이 비면 아직 안 울린 사람이 남은 문제 시간 동안 벨을 울릴 수 있다(D5).
+     * 방 안 사람이 모두 틀렸으면 더 울릴 사람이 없으니, 남은 문제 시간이 몇 초든 {@code ALL_WRONG_REVEAL_DELAY_MS}(5초)만 기다렸다 정답을 공개한다.
+     * 바로 공개하지 않는 건 마지막 판정을 볼 틈을 주려고다. 이때 {@code TURN|}을 보내지 않아서 화면 시간 바는 회색으로 멈춘 채 남는다
+     * (다시 흐르게 하면 바에 남은 시간과 실제 공개 시각이 달라진다).
+     * {@code RESULT}를 {@code QUEUE}보다 먼저 보낸다. 화면은 {@code RESULT}로 「다시 못 울려요」를 띄우고, 뒤에 오는 줄에 내가 없어도 그 안내를 남긴다.
+     *
+     * @param result {@link AnswerResult#WRONG} 또는 {@link AnswerResult#TIMEOUT}
+     */
+    private void passTurn(String nickname, String result) {
+        answerTimer.stop(); // 오답이면 남은 답변 시간을 버린다 (시간 초과면 이미 멈춰 있음)
+        int delta = scoreBoard.applyPenalty(nickname); // -1 (음수 허용, Q6)
+        String next = bellQueue.next(); // 틀린 사람을 빼고 기록, 다음 차례를 받는다
+
+        String notice = nickname + " 님 " + result + "! " + delta + "점";
+        if (next != null) {
+            notice += " · " + next + " 님 차례예요"; // UI 명세서 M8
+        }
+        broadcaster.broadcast(Message.of(MessageType.SYSTEM, notice));
+        broadcaster.broadcast(Message.of(MessageType.RESULT, nickname, result, String.valueOf(delta)));
+        broadcastScoreBoard();
+        broadcaster.broadcast(Message.of(MessageType.QUEUE, bellQueue.order().toArray(new String[0])));
+
+        if (next != null) {
+            startTurn(next);
+        } else if (bellQueue.wrongCount() >= players.size()) { // 모두 틀림: 벨을 울릴 수 있는 사람이 없다 (틀린 뒤 나간 사람이 있어도 되게 >=)
+            long delaySec = GameConfig.ALL_WRONG_REVEAL_DELAY_MS / 1000;
+            broadcaster.broadcast(Message.of(MessageType.SYSTEM, "모두 틀렸어요! " + delaySec + "초 뒤 정답을 공개해요"));
+            questionTimer.start(GameConfig.ALL_WRONG_REVEAL_DELAY_MS, () -> finishRound()); // 남은 문제 시간을 5초로 바꿔 다시 잼. 끝나면 #11 라운드 끝내기
+        } else {
+            broadcaster.broadcast(Message.of(MessageType.TURN)); // 차례 없음: 화면의 문제 시간 바가 다시 흐른다
+            resumeQuestionTimer(); // #11 기능 호출: 남은 문제 시간을 이어서 잰다
         }
     }
 
@@ -277,6 +359,7 @@ public class GameRoom implements ConnectionListener {
         }
         this.roundActive = false;
         questionTimer.stop();
+        answerTimer.stop(); // 정답·문제 시간 끝·문제 넘기기 모두 답변 차례도 끝낸다 (#21)
 
         String revealAnswer = formatRevealAnswer(currentQuestion);
         broadcaster.broadcast(Message.of(MessageType.REVEAL, revealAnswer));
