@@ -51,7 +51,7 @@ class GameRoomAnswerTest {
     }
 
     @Test
-    @DisplayName("차례인 사람이 오답을 보내면 오답 알림·판정·점수판만 보내고 라운드는 이어진다")
+    @DisplayName("혼자 줄에 선 사람이 오답을 보내면 오답 알림·판정·점수판·빈 줄·빈 차례를 보내고 라운드는 이어진다")
     void wrongAnswerKeepsRound() throws IOException {
         // given
         GameRoom room = startedRoom(SHORT_QUESTION);
@@ -65,7 +65,9 @@ class GameRoomAnswerTest {
         assertEquals(List.of(
                 Message.of(MessageType.SYSTEM, "주성 님 오답! -1점"),
                 Message.of(MessageType.RESULT, "주성", "오답", "-1"),
-                Message.of(MessageType.SCORE, "방장:0", "이건:0", "주성:-1")
+                Message.of(MessageType.SCORE, "방장:0", "이건:0", "주성:-1"),
+                Message.of(MessageType.QUEUE),
+                Message.of(MessageType.TURN)
         ), broadcaster.broadcasts());
         assertTrue(room.isRoundActive());
     }
