@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.im.InputContext;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -15,6 +16,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 import silverbell.client.net.MessageRouter;
 import silverbell.client.net.MessageSender;
@@ -33,7 +35,8 @@ import silverbell.common.MessageType;
  *
  * <p><b>담당: 라인 B</b>. 이 영역은 이 클래스만 고친다. 다른 영역을 고칠 일이 생기면 그 담당과 먼저 이야기한다.
  *
- * <p>차례 안내(#14), 보기 버튼·답 입력칸·판정 안내(#16). 답변 시간 카운트다운은 #21, 꾸미기는 M4(#27).
+ * <p>차례 안내(#14), 보기 버튼·답 입력칸·판정 안내(#16), 내 차례 답변 시간 카운트다운(#21). 꾸미기는 M4(#27).
+ * 답변 시간은 서버가 재고(#21), 화면은 {@code TURN}에 담긴 시간으로 남은 초만 보여준다.
  */
 class AnswerPanel extends JPanel {
 
@@ -42,6 +45,8 @@ class AnswerPanel extends JPanel {
     private static final Color CORRECT_COLOR = new Color(190, 240, 190);
     private static final Color WRONG_COLOR = new Color(250, 195, 195);
     private static final float TURN_FONT_SIZE = 16f;
+    /** 답변 시간 카운트다운을 다시 그리는 간격(ms). 초 단위로 보여주지만 넘어가는 순간이 늦지 않게 자주 확인한다 */
+    private static final int COUNTDOWN_TICK_MS = 200;
     /** {@code QUESTION}의 유형 값. 서버 {@code AnswerCheckerSelector}와 같은 이름 */
     private static final String MULTIPLE_CHOICE = "4지선다";
     /** 입력 자리 카드 이름 (수업 밖 {@code CardLayout}은 {@code MainFrame}과 같은 방식). 게임 화면은 {@code QUESTION}을 받아야 보여서, 그때 둘 중 하나로 바뀐다 */
@@ -60,8 +65,15 @@ class AnswerPanel extends JPanel {
     private String myNickname = "";
     /** 지금 문제가 4지선다인지. {@code QUESTION}을 받을 때 정해진다 */
     private boolean multipleChoice = false;
-    /** 이번 문제에 판정 안내를 띄웠는지. 정답 공개 때 그 안내를 지우지 않으려고 쓴다 */
+    /** 이번 문제에 판정 안내를 띄웠는지. 정답 공개·빈 차례 때 그 안내를 지우지 않으려고 쓴다 */
     private boolean showingResult = false;
+    /**
+     * 내 차례 답변 시간 카운트다운 (D4, UI 명세서 S6). 수업 {@code ShootingGame}처럼 {@code javax.swing.Timer}로 다시 그리고,
+     * 문제 시간 바(#47)처럼 「마감 시각 - 지금」으로 계산해서 타이머가 조금 늦게 불려도 시간이 밀리지 않는다.
+     */
+    private final Timer countdownTimer = new Timer(COUNTDOWN_TICK_MS, new CountdownAction());
+    /** 내 답변 시간이 끝나는 시각(ms, {@code System.currentTimeMillis()} 기준) */
+    private long deadlineMs;
 
     AnswerPanel(MessageSender sender, GameScreen screen) {
         super(new BorderLayout(8, 8));
@@ -96,8 +108,9 @@ class AnswerPanel extends JPanel {
      *
      * <pre>
      * QUESTION  4지선다면 보기 버튼 4개, 단답형이면 입력칸 (둘 다 꺼진 채로) (#16)
-     * TURN      내 차례면 「내 차례!」 + 보기·입력칸 켜고 커서, 아니면 「○○ 님 답변 중…」 (#14·#16)
-     * RESULT    보기·입력칸 끄고 「○○ 님 정답! +2점」·「○○ 님 오답! -1점」 (#16)
+     * TURN      내 차례면 「내 차례!」 + 남은 초 + 보기·입력칸 켜고 커서, 아니면 「○○ 님 답변 중…」 (#14·#16·#21)
+     *           빈 차례(TURN|, 줄이 빔)면 입력을 끄고, 방금 판정 안내는 남긴다 (#21)
+     * RESULT    보기·입력칸 끄고 「○○ 님 정답! +2점」·「○○ 님 오답! -1점」·「○○ 님 시간 초과! -1점」 (#16·#21)
      * REVEAL    보기·입력칸 끄기, 판정 안내가 없으면 차례 안내 지우기 (#14·#16)
      * </pre>
      */
@@ -136,19 +149,25 @@ class AnswerPanel extends JPanel {
         clearTurn();
     }
 
-    /** {@code TURN|주성;10000} → 내가 주성이면 「내 차례!」와 입력 켜기, 아니면 「주성 님 답변 중…」. {@code TURN|}이면 지운다. */
+    /**
+     * {@code TURN|주성;10000} → 내가 주성이면 「내 차례!」·남은 초와 입력 켜기, 아니면 「주성 님 답변 중…」.
+     * {@code TURN|}(줄이 빔)이면 입력을 끈다. 바로 앞에 온 판정 안내(「주성 님 오답!」)는 지우지 않는다.
+     */
     private void showTurn(Message message) {
-        String who = message.values(2)[0]; // 차례 없음(TURN|)이면 빈 문자열
-        showingResult = false; // 차례가 바뀌면 앞사람 판정 안내는 끝
+        String[] values = message.values(2);
+        String who = values[0]; // 차례 없음(TURN|)이면 빈 문자열
         if (who.isEmpty()) {
             turnOffInput();
-            clearTurn();
+            if (!showingResult) {
+                clearTurn();
+            }
             return;
         }
+        showingResult = false; // 다음 사람 차례가 되면 앞사람 판정 안내는 끝 (채팅에 「○○ 님 차례예요」가 남는다)
         if (who.equals(myNickname)) {
-            lblTurn.setText("내 차례! 시간 안에 답하세요");
             setBackground(MY_TURN_COLOR);
             turnOnInput();
+            startCountdown(Long.parseLong(values[1])); // 차례가 있으면 서버가 항상 답변 시간을 같이 보낸다
         } else {
             lblTurn.setText(who + " 님 답변 중…");
             setBackground(normalColor);
@@ -198,9 +217,37 @@ class AnswerPanel extends JPanel {
         SwingUtilities.invokeLater(() -> txtAnswer.requestFocusInWindow()); // 막 켜진 직후라 미뤄서 포커스 요청 (수업 FocusAdapterExample)
     }
 
-    /** 보기 버튼과 입력칸을 끈다. 입력칸에 커서가 있었으면 키 입력을 게임 화면에 돌려준다(스페이스바가 다시 벨). */
+    /**
+     * 내 답변 시간 카운트다운을 시작한다. {@code TURN}의 답변 시간(ms)을 받아 「내 차례! 시간 안에 답하세요 (10초)」부터 1초씩 줄인다.
+     * 시간이 다 돼도 화면은 0초에서 멈추기만 하고, 시간 초과 판정은 서버가 {@code RESULT}로 알려준다(#21).
+     */
+    private void startCountdown(long answerTimeMs) {
+        deadlineMs = System.currentTimeMillis() + answerTimeMs;
+        showCountdown();
+        countdownTimer.restart(); // 앞사람 차례에서 돌던 타이머가 있으면 처음부터 다시
+    }
+
+    /** 남은 시간을 올림한 초로 보여준다 (9.2초 남음 → 「10초」). 0이 되면 타이머를 멈춘다. */
+    private void showCountdown() {
+        long remainingMs = Math.max(0, deadlineMs - System.currentTimeMillis());
+        long seconds = (remainingMs + 999) / 1000; // 올림: 0.1초 남아도 「1초」, 다 끝나야 「0초」
+        lblTurn.setText("내 차례! 시간 안에 답하세요 (" + seconds + "초)");
+        if (remainingMs == 0) {
+            countdownTimer.stop();
+        }
+    }
+
+    /**
+     * 보기 버튼과 입력칸을 끄고 답변 카운트다운을 멈춘다. 입력칸에 커서가 있었으면 쓰던 한글 마지막 글자를 확정하고,
+     * 키 입력을 게임 화면에 돌려준다(스페이스바가 다시 벨).
+     */
     private void turnOffInput() {
+        countdownTimer.stop(); // 답을 보냈거나 판정·정답 공개·다음 문제가 오면 내 차례도 끝
         boolean hadFocus = txtAnswer.isFocusOwner(); // 끄기 전에 확인 (꺼지면 포커스가 엉뚱한 곳으로 갈 수 있다)
+        InputContext inputContext = txtAnswer.getInputContext(); // 이 입력칸의 한글 입력기 (입력기가 없는 환경이면 null)
+        if (hadFocus && inputContext != null) {
+            inputContext.endComposition(); // 조합 중인 마지막 글자를 입력칸에 확정. 안 하면 시간 초과로 끌 때 입력기가 버려서 「ㅁㅁㅁㅁ」이 「ㅁㅁㅁ」로 남는다 (#21)
+        }
         for (int i = 0; i < btnChoices.length; i++) {
             btnChoices[i].setEnabled(false);
         }
@@ -228,6 +275,14 @@ class AnswerPanel extends JPanel {
         turnOffInput(); // 연타·Enter 두 번에도 한 번만 보낸다
         lblTurn.setText("답을 보냈어요…");
         sender.send(Message.of(MessageType.ANSWER, answer));
+    }
+
+    /** 답변 카운트다운 다시 그리기. {@code javax.swing.Timer}라 EDT에서 불려서 바로 화면을 고쳐도 된다(수업 {@code ShootingGame}). */
+    private class CountdownAction implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            showCountdown();
+        }
     }
 
     /** 보기 버튼 클릭. 숫자키와 같은 동작이라 {@link #chooseOption(int)}만 부른다. */
