@@ -23,6 +23,8 @@ public final class GameConfig {
     public static final long QUESTION_TIME_MS = 20_000;
     /** D4 답변 시간 */
     public static final long ANSWER_TIME_MS = 10_000;
+    /** 방 안 사람이 모두 틀렸을 때 남은 문제 시간 대신 이만큼만 기다렸다 정답 공개 (#21) */
+    public static final long ALL_WRONG_REVEAL_DELAY_MS = 5_000;
     /** C3 다음 문제까지 */
     public static final long NEXT_QUESTION_DELAY_MS = 3_000;
     /** A3 게임 시작 카운트다운 (3, 2, 1) */

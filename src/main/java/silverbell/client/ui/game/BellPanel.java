@@ -13,6 +13,7 @@ import javax.swing.SwingConstants;
 
 import silverbell.client.net.MessageRouter;
 import silverbell.client.net.MessageSender;
+import silverbell.common.AnswerResult;
 import silverbell.common.Message;
 import silverbell.common.MessageType;
 
@@ -54,13 +55,14 @@ class BellPanel extends JPanel {
      * <pre>
      * QUESTION  벨 켜기 (#14)
      * QUEUE     내가 줄에 있으면 「내 순서: n번」 (#14)
-     * RESULT    내가 틀렸으면 회색 + 「이 문제는 다시 못 울려요」 (#21). 정답이면 서버가 바로 REVEAL을 보내서 따로 받지 않는다 (#16)
+     * RESULT    내가 틀렸으면(오답·시간 초과) 회색 + 「이 문제는 다시 못 울려요」 (#21). 정답이면 서버가 바로 REVEAL을 보내서 벨이 꺼진다 (#16)
      * REVEAL    벨 끄기 (#14)
      * </pre>
      */
     void register(MessageRouter router) {
         router.on(MessageType.QUESTION, message -> turnOn());
         router.on(MessageType.QUEUE, message -> showMyPlace(message));
+        router.on(MessageType.RESULT, message -> showWrong(message));
         router.on(MessageType.REVEAL, message -> turnOff());
     }
 
@@ -90,6 +92,20 @@ class BellPanel extends JPanel {
     private void turnOff() {
         btnBell.setEnabled(false);
         lblInfo.setText(" ");
+    }
+
+    /**
+     * {@code RESULT|주성;오답;-1}·{@code RESULT|주성;시간 초과;-1}에서 내가 틀렸으면 벨을 회색으로 두고
+     * 「이 문제는 다시 못 울려요」 (D6 재도전 금지, UI 명세서 M11). 다음 {@code QUESTION}에서 {@link #turnOn()}이 다시 켠다.
+     * 서버도 틀린 사람의 {@code BUZZ}를 무시한다(N7). 바로 뒤에 오는 {@code QUEUE}에는 내가 없어서 이 안내가 그대로 남는다.
+     */
+    private void showWrong(Message message) {
+        String[] values = message.values(3);
+        if (values.length < 3 || !values[0].equals(myNickname) || AnswerResult.CORRECT.equals(values[1])) {
+            return;
+        }
+        btnBell.setEnabled(false); // 꺼진 버튼은 회색으로 보인다. 스페이스바(ring)도 꺼진 벨은 보내지 않는다
+        lblInfo.setText("이 문제는 다시 못 울려요");
     }
 
     /** {@code QUEUE|주성;이건} → 내가 2번째면 「내 순서: 2번」. 줄에 없으면 그대로 둔다. */

@@ -171,6 +171,7 @@ CONTRIBUTING의 테스트 규칙(이름 "~하면 ~된다", `// given`·`// when`
 | `Objects.requireNonNull`, `final class` 불변 객체 | `Message` | 여러 스레드가 같이 써도 안전 |
 | `instanceof` 패턴 (Java 16) | `Message.equals` | 짧게 쓰려고. 다른 데서는 안 늘림 |
 | `CardLayout` | `MainFrame`, `AnswerPanel` | 화면마다 창을 새로 띄우지 않고 한 창에서 전환. 답 입력 영역의 4지선다 보기 ↔ 단답형 입력칸 전환(#16) |
+| `InputContext.endComposition()` | `AnswerPanel.turnOffInput` | 답 입력칸을 끌 때 조합 중인 한글 마지막 글자를 확정. 안 하면 시간 초과 때 Windows 입력기가 그 글자를 버려 「ㅁㅁㅁㅁ」이 「ㅁㅁㅁ」로 남음(#21) |
 | 람다 (한 줄 등록만) | `invokeLater`, `router.on`, `dispatcher.register`, 테스트 | 수업 `FocusAdapterExample`과 같은 범위. 3-5절 |
 | `synchronized` 메서드·블록 | `send`, 목록 순회, `ClientRegistry`, `GameRoom`, `BellQueue` | 수업은 동기화 없이 썼지만, 벨 순서(N1)·동시 전송에서 실제로 꼬임 |
 | `socket.connect(주소, 시간 제한)` | `ServerConnection`, `ConsoleClient` | 서버가 없거나 IP가 틀리면 `new Socket(host, port)`는 오래 멈춤. 정해진 시간 안에 실패를 알림(N5) |
@@ -178,12 +179,9 @@ CONTRIBUTING의 테스트 규칙(이름 "~하면 ~된다", `// given`·`// when`
 | `LocalTime` + `DateTimeFormatter` | `ServerLog` | 로그에 시각 붙이기(#4 완료 기준, 보고서용) |
 | `AutoCloseable` | `SocketServer`, `ServerConnection` | JUnit에서 서버·연결을 켰다 끄기 |
 | JUnit 5, Gradle | `src/test`, `build.gradle` | `game` 패키지 단위 테스트, CI |
+| `ScheduledExecutorService` | `QuestionTimer`, `GameRoom`의 다음 문제 예약 | 서버 쪽 타이머(문제 20초 #11, 답변 10초 #21). 수업에는 화면용 `javax.swing.Timer`만 있었고, 라인 A가 #11에서 정함. 멈춤·재개·중단이 필요해서 `QuestionTimer` 한 클래스에 모으고, 답변 타이머(#21)는 같은 클래스를 하나 더 만들어 씀 |
 
-**아직 정하지 않은 것** (정하면 위 표로 옮겨요)
-
-- **서버 쪽 타이머**(문제 20초, 답변 10초, 초성 힌트 시점 — #11): 수업에는 화면용 `javax.swing.Timer`만 있었어요. 후보는 ① `extends Thread` + `Thread.sleep` + `running` 플래그(수업 스레드 범위 안), ② `javax.swing.Timer`. `GameRoom` 담당(라인 A)과 정해요.
-
-**기본으로 쓰지 않는 것**: `java.util.concurrent` 전부(`ExecutorService`, `ConcurrentHashMap`, `CopyOnWriteArrayList`, `Atomic*`), `java.util.function`·메서드 참조, `ObjectOutputStream` 직렬화, JSON 라이브러리, NIO, 외부 라이브러리, Stream API, 여러 줄짜리 람다. 이걸로 할 일은 `Vector`·`synchronized`·`volatile`·우리 인터페이스로 해요.
+**기본으로 쓰지 않는 것** (위 표의 서버 타이머만 예외): `java.util.concurrent` 전부(`ExecutorService`, `ConcurrentHashMap`, `CopyOnWriteArrayList`, `Atomic*`), `java.util.function`·메서드 참조, `ObjectOutputStream` 직렬화, JSON 라이브러리, NIO, 외부 라이브러리, Stream API, 여러 줄짜리 람다. 이걸로 할 일은 `Vector`·`synchronized`·`volatile`·우리 인터페이스로 해요.
 
 ## 6. Claude가 코딩할 때 순서
 
