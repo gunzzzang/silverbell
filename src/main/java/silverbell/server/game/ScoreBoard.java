@@ -27,6 +27,19 @@ public class ScoreBoard {
     }
 
     /**
+     * 정답 시 얻는 점수를 계산한다.
+     * 규칙: 난이도 점수 - 공개된 초성 힌트 수, 최소 {@link GameConfig#MIN_CORRECT_SCORE}점.
+     *
+     * @param difficulty 문제 난이도 ("1", "2", "3" 등 정수 문자열)
+     * @param hintCount  공개된 초성 힌트 수
+     * @return 계산된 정답 점수
+     */
+    public int calculateCorrectScore(String difficulty, int hintCount) {
+        int baseScore = parseDifficultyScore(difficulty);
+        return Math.max(GameConfig.MIN_CORRECT_SCORE, baseScore - Math.max(0, hintCount));
+    }
+
+    /**
      * 정답 처리 (#16이 판정 후 호출).
      * 규칙: 난이도 점수 - 벨을 울린 순간까지 나온 힌트 수, 최소 {@link GameConfig#MIN_CORRECT_SCORE}점.
      *

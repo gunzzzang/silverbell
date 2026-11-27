@@ -8,7 +8,6 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
-import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
@@ -31,10 +30,12 @@ class QuestionPanel extends JPanel {
     private static final int TIMER_TICK_MS = 100;
     private static final Color ACTIVE_BAR_COLOR = new Color(66, 133, 244);
     private static final Color PAUSED_BAR_COLOR = Color.GRAY;
+    private static final Color HINT_TEXT_COLOR = new Color(26, 115, 232);
     private static final Color REVEAL_TEXT_COLOR = new Color(27, 138, 62);
 
     private final JLabel infoLabel = new JLabel("대기 중...", SwingConstants.LEFT);
     private final JTextArea questionArea = new JTextArea("문제");
+    private final JLabel hintLabel = new JLabel(" ", SwingConstants.CENTER);
     private final JLabel revealLabel = new JLabel(" ", SwingConstants.CENTER);
     private final JProgressBar timeBar = new JProgressBar();
     private final JLabel timeTextLabel = new JLabel("0.0초", SwingConstants.RIGHT);
@@ -44,22 +45,35 @@ class QuestionPanel extends JPanel {
     private int remainingMs;
     private long deadlineMs;
 
+    private String currentQuestionNumber = "";
+    private String currentQuestionType = "";
+    private String currentBaseDifficulty = "";
+
     QuestionPanel() {
-        super(new BorderLayout(8, 8));
+        super(new BorderLayout(8, 4));
         setBorder(BorderFactory.createTitledBorder("문제 (라인 A)"));
 
         // 상단: 「문제 n · 유형 · 난이도 점수」
         infoLabel.setFont(infoLabel.getFont().deriveFont(Font.BOLD, 14f));
         add(infoLabel, BorderLayout.NORTH);
 
-        // 중단: 문제 글
+        // 중단: 문제 영역: 「문제 n · 유형 · 난이도 점수」, 문제 글, 단답형 초성 힌트 칸, 남은 시간 바
         questionArea.setEditable(false);
+        questionArea.setFocusable(false);
         questionArea.setLineWrap(true);
         questionArea.setWrapStyleWord(true);
+        questionArea.setBackground(Color.WHITE);
+        questionArea.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
+                BorderFactory.createEmptyBorder(4, 6, 4, 6)
+        ));
         questionArea.setFont(questionArea.getFont().deriveFont(16f));
-        add(new JScrollPane(questionArea), BorderLayout.CENTER);
+        add(questionArea, BorderLayout.CENTER);
 
-        // 하단: 정답 공개 라벨 + 남은 시간 바
+        // 하단: 초성 힌트 라벨 + 정답 공개 라벨 + 남은 시간 바
+        hintLabel.setFont(hintLabel.getFont().deriveFont(Font.BOLD, 15f));
+        hintLabel.setForeground(HINT_TEXT_COLOR);
+
         revealLabel.setFont(revealLabel.getFont().deriveFont(Font.BOLD, 15f));
         revealLabel.setForeground(REVEAL_TEXT_COLOR);
 
@@ -68,8 +82,9 @@ class QuestionPanel extends JPanel {
         timerRow.add(timeBar, BorderLayout.CENTER);
         timerRow.add(timeTextLabel, BorderLayout.EAST);
 
-        JPanel southPanel = new JPanel(new BorderLayout(4, 4));
-        southPanel.add(revealLabel, BorderLayout.NORTH);
+        JPanel southPanel = new JPanel(new BorderLayout(4, 2));
+        southPanel.add(hintLabel, BorderLayout.NORTH);
+        southPanel.add(revealLabel, BorderLayout.CENTER);
         southPanel.add(timerRow, BorderLayout.SOUTH);
         add(southPanel, BorderLayout.SOUTH);
 
@@ -89,6 +104,7 @@ class QuestionPanel extends JPanel {
      */
     void register(MessageRouter router) {
         router.on(MessageType.QUESTION, this::onQuestion);
+        router.on(MessageType.HINT, this::onHint);
         router.on(MessageType.REVEAL, this::onReveal);
         router.on(MessageType.TURN, this::onTurn);
     }
@@ -112,14 +128,15 @@ class QuestionPanel extends JPanel {
         if (values.length < 9) {
             return;
         }
-        String number = values[0];
-        String type = values[1];
-        String difficulty = values[2];
+        this.currentQuestionNumber = values[0];
+        this.currentQuestionType = values[1];
+        this.currentBaseDifficulty = values[2];
         int limitMs = Integer.parseInt(values[3]);
         String prompt = values[8];
 
-        infoLabel.setText("문제 " + number + " · " + type + " · 난이도 " + difficulty + "점");
+        infoLabel.setText("문제 " + currentQuestionNumber + " · " + currentQuestionType + " · 난이도 " + currentBaseDifficulty + "점");
         questionArea.setText(prompt);
+        hintLabel.setText(" ");
         revealLabel.setText(" ");
 
         this.totalMs = limitMs;
@@ -132,6 +149,25 @@ class QuestionPanel extends JPanel {
         refreshTimerView();
 
         countdownTimer.restart();
+    }
+
+    /**
+     * HINT|힌트 단계;초성 힌트;바뀐 점수
+     */
+    private void onHint(Message message) {
+        String[] values = message.values(3);
+        if (values.length < 3) {
+            return;
+        }
+        String stage = values[0];
+        String hintText = values[1];
+        String reducedScore = values[2];
+
+        hintLabel.setText("[" + stage + "차 힌트] " + hintText);
+        infoLabel.setText(
+                "문제 " + currentQuestionNumber + " · " + currentQuestionType
+                        + " · 현재 " + reducedScore + "점 (기본 " + currentBaseDifficulty + "점)"
+        );
     }
 
     /**
